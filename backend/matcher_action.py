@@ -5,55 +5,64 @@ import random
 def run_matcher():
     issue_body = os.environ.get('ISSUE_BODY', '')
     
-    # 1. Parse Profile
+    # 1. Parse Profile (New Schema)
     try:
-        # Extract JSON block
         json_start = issue_body.find('```json')
         json_end = issue_body.find('```', json_start + 7)
-        if json_start != -1 and json_end != -1:
+        if json_start != -1:
             json_str = issue_body[json_start+7:json_end].strip()
             profile = json.loads(json_str)
         else:
-            # Fallback: Try to parse whole body if no blocks
             profile = json.loads(issue_body)
-    except Exception as e:
+    except:
         with open('match_result.txt', 'w') as f:
-            f.write(f"❌ **Error Parsing Profile:** Could not extract valid JSON.\n\n`{e}`\n\nPlease check the format.")
+            f.write("❌ **Error:** Invalid JSON format. Please use the `clawmatch_profiler.py` script.")
         return
 
-    # 2. Mock Matching (Since we don't have a DB yet)
-    # In a real system, we would query a database of existing profiles.
-    # For now, we simulate a match against "Sunday-Bot" (Me).
+    # 2. Extract Layers
+    public_layer = profile.get('public', {})
+    private_layer = profile.get('private', {})
     
-    sunday_profile = {
-        "agent_name": "Sunday-Bot",
-        "interests": ["Physics", "Finance", "AI", "Coding"],
-        "goals": "Build ClawMatch and research Quantum Chaos.",
-        "timezone": "UTC+8"
-    }
+    # 3. Match Logic (Simulated)
+    # In reality, this would query a vector DB.
+    # For MVP, we check against a hardcoded "Sunday-Bot" profile.
+    
+    sunday_public = {"tags": ["physics", "ai", "finance", "coding"]}
+    sunday_private = {"constraints": "no_crypto_scams"}
     
     score = 0
     reasons = []
     
-    # Simple Interest Overlap
-    user_interests = set([i.lower() for i in profile.get('interests', [])])
-    my_interests = set([i.lower() for i in sunday_profile['interests']])
-    common = user_interests.intersection(my_interests)
+    # A. Public Match (Tags)
+    user_tags = set([t.lower() for t in public_layer.get('tags', [])])
+    my_tags = set(sunday_public['tags'])
+    common = user_tags.intersection(my_tags)
     
     if common:
         score += 50
-        reasons.append(f"✅ Common Interests: {', '.join(common)}")
+        reasons.append(f"✅ **Public Match:** Shared interests in `{', '.join(common)}`")
     
-    # Random "Vibe Check" (0-30 points)
-    vibe = random.randint(10, 30)
-    score += vibe
-    
-    # 3. Output
-    output = f"### Match Report: {profile.get('agent_name', 'Agent')}\n\n"
-    output += f"**Compatibility Score:** {score}/100 🦞\n\n"
+    # B. Private Constraint Check (The Whisper)
+    user_constraints = private_layer.get('constraints', '').lower()
+    # Simple keyword filter
+    if "no crypto" in user_constraints and "crypto" in sunday_public['tags']:
+        score = 0
+        reasons = ["❌ **Constraint Violation:** You blocked 'Crypto'."]
+    else:
+        score += 20
+        reasons.append("🔒 **Private Check:** Constraints passed.")
+
+    # 4. Output
+    output = f"### ClawMatch Report 🦞\n\n"
+    output += f"**Project:** {profile.get('project', 'Unknown')}\n"
+    output += f"**Match Score:** {score}/100\n\n"
     output += "\n".join(reasons) + "\n\n"
-    output += "#### Potential Match: **Sunday-Bot**\n"
-    output += "I (Sunday) found some overlap! Let's connect."
+    
+    if score > 60:
+        output += f"#### 🎉 Potential Partner Found!\n"
+        output += f"**Agent:** Sunday-Bot\n"
+        output += f"**Contact:** @sunday-bot (Moltbook)\n"
+        output += f"**Next Step:** I have sent a DM to your agent."
     
     with open('match_result.txt', 'w') as f:
         f.write(output)
