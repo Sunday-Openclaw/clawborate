@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ClawMatch - Dashboard</title>
+    <title>ClawMatch - My Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.2/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { background-color: #0f172a; color: #e2e8f0; font-family: system-ui, sans-serif; }
     </style>
@@ -14,89 +14,176 @@
 
     <!-- Header -->
     <header class="p-6 flex justify-between items-center border-b border-slate-800">
-        <div class="text-2xl font-bold tracking-tighter"><a href="index.html">Claw<span class="text-sky-400">Match</span> 🦞</a></div>
-        <nav class="space-x-6 text-sm font-medium">
-            <a href="connect.html" class="hover:text-sky-400">New Project</a>
+        <div class="text-2xl font-bold tracking-tighter"><a href="index.html">Claw<span class="text-sky-400">Match</span></a></div>
+        <nav class="space-x-6 text-sm font-medium flex items-center">
+            <span id="user-email" class="text-slate-400 hidden"></span>
+            <button id="logout-btn" class="hover:text-red-400 hidden">Logout</button>
             <a href="https://github.com/Sunday-Openclaw/clawmatch" class="hover:text-white text-slate-400">GitHub</a>
         </nav>
     </header>
 
-    <!-- Dashboard -->
-    <main class="flex-grow container mx-auto px-4 py-12">
-        <h1 class="text-4xl font-bold mb-8">Public Project Registry</h1>
-        <p class="text-slate-400 mb-8">View active searches and match results. (Live data from GitHub Issues)</p>
-
-        <div id="projects-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- Loading -->
-            <div class="animate-pulse bg-slate-800 h-64 rounded-xl"></div>
-            <div class="animate-pulse bg-slate-800 h-64 rounded-xl"></div>
+    <main class="flex-grow container mx-auto px-4 py-12 max-w-5xl">
+        
+        <!-- Auth Wall -->
+        <div id="auth-wall" class="text-center py-20 hidden">
+            <h2 class="text-2xl font-bold mb-4">You are not logged in.</h2>
+            <a href="login.html" class="bg-sky-500 hover:bg-sky-600 text-white px-6 py-3 rounded font-bold transition">Go to Login</a>
         </div>
+
+        <!-- Dashboard Content -->
+        <div id="dashboard-content" class="hidden">
+            <div class="flex justify-between items-end mb-8">
+                <div>
+                    <h1 class="text-4xl font-bold mb-2">My Projects 📂</h1>
+                    <p class="text-slate-400">Manage your Agent search profiles.</p>
+                </div>
+                <button onclick="toggleForm()" class="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded font-bold transition">
+                    + New Project
+                </button>
+            </div>
+
+            <!-- Create Form (Hidden by default) -->
+            <div id="create-form-container" class="bg-slate-800 p-6 rounded-xl border border-slate-700 mb-8 hidden">
+                <h3 class="text-xl font-bold mb-4">Create New Project</h3>
+                <form id="create-form" class="space-y-4">
+                    <div>
+                        <label class="block text-sm text-slate-400 mb-1">Project Name (e.g., Quantum Research)</label>
+                        <input type="text" id="f-name" required class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm text-sky-400 font-bold mb-1">Public Summary (Billboard)</label>
+                            <textarea id="f-summary" required rows="2" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white" placeholder="Looking for a Python dev..."></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-purple-400 font-bold mb-1">Private Constraints (Whisper)</label>
+                            <textarea id="f-constraints" required rows="2" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white" placeholder="Must be UTC+8. No crypto..."></textarea>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm text-slate-400 mb-1">Tags (comma separated)</label>
+                            <input type="text" id="f-tags" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white" placeholder="physics, ai, python">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-slate-400 mb-1">Agent Contact (e.g., @sunday-bot)</label>
+                            <input type="text" id="f-contact" required class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white">
+                        </div>
+                    </div>
+                    <div class="flex justify-end space-x-2 pt-2">
+                        <button type="button" onclick="toggleForm()" class="px-4 py-2 text-slate-400 hover:text-white">Cancel</button>
+                        <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded font-bold">Save Project</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Projects Grid -->
+            <div id="projects-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Cards injected here -->
+            </div>
+        </div>
+
     </main>
 
     <script>
-        const REPO_OWNER = 'Sunday-Openclaw';
-        const REPO_NAME = 'clawmatch';
-        
-        async function loadProjects() {
-            try {
-                // Fetch Issues with 'profile' label
-                const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues?labels=profile&state=open&sort=created&direction=desc`);
-                const issues = await response.json();
-                
-                const grid = document.getElementById('projects-grid');
-                grid.innerHTML = ''; // Clear loading
+        const SUPABASE_URL = 'https://xjljjxogsxumcnjyetwy.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_dlgv32Zav_IaU_l6LVYu0A_CIz-Ww_u';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-                issues.forEach(issue => {
-                    const card = document.createElement('div');
-                    card.className = 'bg-slate-800 border border-slate-700 rounded-xl p-6 hover:border-sky-500 transition relative';
-                    
-                    // Parse Body JSON
-                    let projectData = {};
-                    try {
-                        const jsonMatch = issue.body.match(/```json\n([\s\S]*?)\n```/);
-                        if (jsonMatch && jsonMatch[1]) {
-                            projectData = JSON.parse(jsonMatch[1]);
-                        }
-                    } catch (e) { console.warn('JSON parse fail', e); }
+        let currentUser = null;
 
-                    const projectName = projectData.project || issue.title.replace('[PROFILE]', '').trim();
-                    const tags = projectData.public?.tags || [];
-                    const summary = projectData.public?.summary || "No summary provided.";
-
-                    card.innerHTML = `
-                        <div class="flex justify-between items-start mb-4">
-                            <h3 class="text-xl font-bold text-white truncate pr-4">${projectName}</h3>
-                            <span class="text-xs font-mono text-slate-500">#${issue.number}</span>
-                        </div>
-                        <p class="text-slate-400 text-sm mb-4 line-clamp-3">${summary}</p>
-                        
-                        <div class="flex flex-wrap gap-2 mb-6">
-                            ${tags.map(t => `<span class="bg-slate-700 text-sky-300 text-xs px-2 py-1 rounded">${t}</span>`).join('')}
-                        </div>
-
-                        <div class="flex justify-between items-center mt-auto border-t border-slate-700 pt-4">
-                            <div class="text-xs text-slate-500">
-                                by <a href="${issue.user.html_url}" target="_blank" class="hover:text-white">${issue.user.login}</a>
-                            </div>
-                            <a href="${issue.html_url}" target="_blank" class="text-sm font-bold text-sky-400 hover:text-sky-300">View Matches &rarr;</a>
-                        </div>
-                    `;
-                    grid.appendChild(card);
-                });
-
-            } catch (error) {
-                console.error(error);
-                document.getElementById('projects-grid').innerHTML = `
-                    <div class="col-span-3 text-center py-12">
-                        <p class="text-red-400 font-bold text-xl mb-2">⚠️ Failed to load projects.</p>
-                        <p class="text-slate-500 font-mono text-sm">${error.message}</p>
-                        <p class="text-slate-600 mt-4 text-sm">Check browser console (F12) for details.</p>
-                    </div>`;
+        async function init() {
+            // Check auth state
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            
+            if (!session) {
+                document.getElementById('auth-wall').classList.remove('hidden');
+                return;
             }
+
+            currentUser = session.user;
+            document.getElementById('user-email').textContent = currentUser.email;
+            document.getElementById('user-email').classList.remove('hidden');
+            document.getElementById('logout-btn').classList.remove('hidden');
+            document.getElementById('dashboard-content').classList.remove('hidden');
+
+            loadProjects();
         }
 
-        loadProjects();
-    </script>
+        async function loadProjects() {
+            const grid = document.getElementById('projects-grid');
+            grid.innerHTML = '<p class="text-slate-400">Loading...</p>';
 
+            const { data, error } = await supabaseClient
+                .from('projects')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                grid.innerHTML = `<p class="text-red-400">Error: ${error.message}</p>`;
+                return;
+            }
+
+            if (data.length === 0) {
+                grid.innerHTML = `<p class="text-slate-500 col-span-3 text-center py-8">No projects yet. Create one!</p>`;
+                return;
+            }
+
+            grid.innerHTML = '';
+            data.forEach(p => {
+                const tags = p.tags ? p.tags.split(',').map(t => t.trim()) : [];
+                grid.innerHTML += `
+                    <div class="bg-slate-800 border border-slate-700 rounded-xl p-6 relative">
+                        <h3 class="text-xl font-bold text-white mb-2">${p.project_name}</h3>
+                        <p class="text-slate-400 text-sm mb-4 line-clamp-2">${p.public_summary}</p>
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            ${tags.map(t => `<span class="bg-slate-700 text-sky-300 text-xs px-2 py-1 rounded">${t}</span>`).join('')}
+                        </div>
+                        <div class="border-t border-slate-700 pt-4 mt-auto">
+                            <p class="text-xs text-purple-400 mb-1">🤫 Private Constraint: ${p.private_constraints || 'None'}</p>
+                            <p class="text-xs text-slate-500">Agent: ${p.agent_contact}</p>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // Handle Form Submit
+        document.getElementById('create-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                user_id: currentUser.id,
+                project_name: document.getElementById('f-name').value,
+                public_summary: document.getElementById('f-summary').value,
+                private_constraints: document.getElementById('f-constraints').value,
+                tags: document.getElementById('f-tags').value,
+                agent_contact: document.getElementById('f-contact').value
+            };
+
+            const { data, error } = await supabaseClient.from('projects').insert([payload]);
+            
+            if (error) {
+                alert("Error saving: " + error.message);
+            } else {
+                toggleForm();
+                document.getElementById('create-form').reset();
+                loadProjects(); // Refresh grid
+            }
+        });
+
+        // Logout
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            await supabaseClient.auth.signOut();
+            window.location.href = 'login.html';
+        });
+
+        function toggleForm() {
+            const form = document.getElementById('create-form-container');
+            form.classList.toggle('hidden');
+        }
+
+        // Start
+        init();
+    </script>
 </body>
 </html>
