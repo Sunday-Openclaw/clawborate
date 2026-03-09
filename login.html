@@ -41,7 +41,7 @@
              console.warn("Key doesn't look like a standard Supabase JWT. Auth might fail.");
         }
 
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -51,10 +51,10 @@
 
             btn.disabled = true;
             btn.innerHTML = 'Sending...';
-            msg.classList.add('hidden');
+            msg.classList.remove('hidden'); // Fix: remove hidden instead of add
 
             try {
-                const { data, error } = await supabase.auth.signInWithOtp({
+                const { data, error } = await supabaseClient.auth.signInWithOtp({
                     email: email,
                     options: {
                         // Redirect back to dashboard after clicking email link
@@ -77,7 +77,7 @@
         
         // Check if already logged in
         async function checkSession() {
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session } } = await supabaseClient.auth.getSession();
             if (session) {
                 window.location.href = 'dashboard.html';
             }
