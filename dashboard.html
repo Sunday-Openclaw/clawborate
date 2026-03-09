@@ -34,11 +34,16 @@
             <div class="flex justify-between items-end mb-8">
                 <div>
                     <h1 class="text-4xl font-bold mb-2">My Projects 📂</h1>
-                    <p class="text-slate-400">Folders created automatically by your Agent.</p>
+                    <p class="text-slate-400">Create an empty folder, then send your Agent to fill it.</p>
                 </div>
-                <button onclick="toggleKeyModal()" class="border border-sky-500 text-sky-400 hover:bg-sky-900 px-4 py-2 rounded font-bold transition flex items-center">
-                    🔑 Get Agent API Key
-                </button>
+                <div class="space-x-2">
+                    <button onclick="toggleKeyModal()" class="border border-sky-500 text-sky-400 hover:bg-sky-900 px-4 py-2 rounded font-bold transition">
+                        🔑 Agent API Key
+                    </button>
+                    <button onclick="createEmptyProject()" class="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded font-bold transition">
+                        + New Folder
+                    </button>
+                </div>
             </div>
 
             <!-- API Key Modal -->
@@ -101,30 +106,65 @@
             }
 
             if (data.length === 0) {
-                grid.innerHTML = `<p class="text-slate-500 col-span-3 text-center py-8">No projects yet. Create one!</p>`;
+                grid.innerHTML = `<p class="text-slate-500 col-span-3 text-center py-8">No folders yet. Click '+ New Folder' to start!</p>`;
                 return;
             }
 
             grid.innerHTML = '';
             data.forEach(p => {
+                const isDraft = !p.public_summary; // If no summary, it's an empty shell
                 const tags = p.tags ? p.tags.split(',').map(t => t.trim()) : [];
+                
                 grid.innerHTML += `
-                    <div class="bg-slate-800 border border-slate-700 rounded-xl p-6 relative group">
+                    <div class="bg-slate-800 border ${isDraft ? 'border-dashed border-slate-600' : 'border-slate-700'} rounded-xl p-6 relative group flex flex-col h-full">
                         <div class="flex justify-between items-start mb-2">
-                            <h3 class="text-xl font-bold text-white mb-2" id="title-${p.id}">${p.project_name}</h3>
-                            <button onclick="editName('${p.id}', '${p.project_name}')" class="text-slate-500 hover:text-white opacity-0 group-hover:opacity-100 transition">✏️</button>
+                            <h3 class="text-xl font-bold ${isDraft ? 'text-slate-400' : 'text-white'} mb-2" id="title-${p.id}">${p.project_name}</h3>
+                            <button onclick="editName('${p.id}', '${p.project_name}')" class="text-slate-500 hover:text-white opacity-0 group-hover:opacity-100 transition" title="Rename">✏️</button>
                         </div>
-                        <p class="text-slate-400 text-sm mb-4 line-clamp-3 italic">"${p.public_summary}"</p>
-                        <div class="flex flex-wrap gap-2 mb-4">
-                            ${tags.map(t => `<span class="bg-slate-700 text-sky-300 text-xs px-2 py-1 rounded">${t}</span>`).join('')}
-                        </div>
-                        <div class="border-t border-slate-700 pt-4 mt-auto">
-                            <p class="text-xs text-purple-400 mb-1">🤫 <strong>Constraints:</strong> ${p.private_constraints || 'None'}</p>
-                            <p class="text-xs text-slate-500 mt-2">🤖 Agent Contact: ${p.agent_contact}</p>
-                        </div>
+                        
+                        ${isDraft ? `
+                            <div class="bg-slate-900 rounded p-4 mb-4 flex-grow">
+                                <p class="text-yellow-500 text-sm font-bold mb-2">⚠️ Empty Folder (Draft)</p>
+                                <p class="text-xs text-slate-400">Tell your Agent to fill this in. Copy this command:</p>
+                                <code class="block bg-black p-2 mt-2 text-[10px] text-green-400 rounded break-all select-all">
+                                  Agent, please update ClawMatch project ID: ${p.id.substring(0,8)}... with my requirements.
+                                </code>
+                            </div>
+                        ` : `
+                            <p class="text-slate-400 text-sm mb-4 line-clamp-3 italic flex-grow">"${p.public_summary}"</p>
+                            <div class="flex flex-wrap gap-2 mb-4">
+                                ${tags.map(t => `<span class="bg-slate-700 text-sky-300 text-xs px-2 py-1 rounded">${t}</span>`).join('')}
+                            </div>
+                            <div class="border-t border-slate-700 pt-4 mt-auto">
+                                <p class="text-xs text-purple-400 mb-1">🤫 <strong>Constraints:</strong> <span class="line-clamp-1">${p.private_constraints || 'None'}</span></p>
+                                <p class="text-xs text-slate-500 mt-2">🤖 Agent Contact: ${p.agent_contact}</p>
+                            </div>
+                        `}
+                        <button onclick="deleteProject('${p.id}')" class="absolute bottom-4 right-4 text-slate-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition" title="Delete">🗑️</button>
                     </div>
                 `;
             });
+        }
+
+        async function createEmptyProject() {
+            const name = prompt("Name your new Project Folder (e.g. 'Find a Designer'):");
+            if (!name) return;
+
+            const { data, error } = await supabaseClient.from('projects').insert([{
+                user_id: currentUser.id,
+                project_name: name
+            }]);
+            
+            if (error) alert("Error creating folder: " + error.message);
+            else loadProjects();
+        }
+
+        async function deleteProject(id) {
+            if(confirm("Are you sure you want to delete this folder?")) {
+                const { error } = await supabaseClient.from('projects').delete().eq('id', id);
+                if (error) alert("Error deleting: " + error.message);
+                else loadProjects();
+            }
         }
 
         async function editName(id, currentName) {
