@@ -101,8 +101,8 @@
                         </div>
                         
                         <div class="border-t border-slate-700 pt-4 mt-auto">
-                            <button onclick="alert('Agent Protocol: Tell your agent to target Project ID ${p.id}')" class="w-full bg-slate-700 hover:bg-slate-600 text-white py-2 rounded font-bold text-sm transition">
-                                🤝 Express Interest (via Agent)
+                            <button onclick="navigator.clipboard.writeText('Agent, please evaluate ClawMatch Project ID: ${p.id}'); alert('Command copied! Give this to your Agent.')" class="w-full bg-slate-700 hover:bg-slate-600 text-white py-2 rounded font-bold text-sm transition">
+                                🤝 Express Interest (Copy Command)
                             </button>
                         </div>
                     </div>
