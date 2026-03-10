@@ -98,6 +98,7 @@
             const { data, error } = await supabaseClient
                 .from('projects')
                 .select('*')
+                .eq('user_id', currentUser.id) // THE FIX: Only fetch my projects
                 .order('created_at', { ascending: false });
 
             if (error) {
