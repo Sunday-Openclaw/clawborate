@@ -36,6 +36,11 @@
       </aside>
 
       <section class="bg-slate-800 border border-slate-700 rounded-2xl p-4 flex flex-col min-h-[72vh]">
+        <div id="owner-summary-box" class="hidden bg-slate-900/70 border border-slate-700 rounded-xl p-4 mb-4">
+          <p class="text-xs uppercase tracking-wide text-slate-400 mb-2">Agent summary for owner</p>
+          <p id="owner-summary" class="text-slate-200 leading-relaxed"></p>
+          <p id="owner-next-step" class="text-sm text-sky-300 mt-3"></p>
+        </div>
         <div id="thread-empty" class="flex-grow flex items-center justify-center text-slate-500 text-center">
           Select a conversation to view the thread.
         </div>
@@ -126,8 +131,8 @@
     async function loadConversations() {
       const { data, error } = await supabaseClient
         .from('conversations')
-        .select('id, project_id, interest_id, initiator_user_id, receiver_user_id, status, created_at')
-        .order('created_at', { ascending: false });
+        .select('id, project_id, interest_id, initiator_user_id, receiver_user_id, status, summary_for_owner, recommended_next_step, last_agent_decision, created_at, updated_at')
+        .order('updated_at', { ascending: false });
 
       const list = document.getElementById('conversation-list');
       if (error) {
@@ -160,6 +165,7 @@
               <div class="min-w-0">
                 <p class="font-semibold text-white truncate">${escapeHtml(project?.project_name || 'Unknown project')}</p>
                 <p class="text-xs text-slate-400 truncate">with user ${escapeHtml(otherUserId)}</p>
+                ${c.last_agent_decision ? `<p class="text-[11px] text-sky-300 truncate mt-1">${escapeHtml(c.last_agent_decision)}</p>` : ''}
               </div>
               <span class="text-xs px-2 py-1 rounded-full ${statusTheme(c.status)}">${escapeHtml(c.status)}</span>
             </div>
@@ -192,7 +198,18 @@
       document.getElementById('thread-subtitle').textContent = `Talking with user ${otherUserId}`;
       document.getElementById('thread-status').textContent = selectedConversation.status;
       document.getElementById('thread-status').className = `inline-block text-xs px-3 py-1 rounded-full ${statusTheme(selectedConversation.status)}`;
-      document.getElementById('thread-meta').textContent = `Project ID: ${selectedConversation.project_id} · Started ${new Date(selectedConversation.created_at).toLocaleString()}`;
+      document.getElementById('thread-meta').textContent = `Project ID: ${selectedConversation.project_id} · Started ${new Date(selectedConversation.created_at).toLocaleString()} · Updated ${new Date(selectedConversation.updated_at || selectedConversation.created_at).toLocaleString()}`;
+
+      const ownerSummaryBox = document.getElementById('owner-summary-box');
+      if (selectedConversation.summary_for_owner || selectedConversation.recommended_next_step) {
+        ownerSummaryBox.classList.remove('hidden');
+        document.getElementById('owner-summary').textContent = selectedConversation.summary_for_owner || 'No owner summary yet.';
+        document.getElementById('owner-next-step').textContent = selectedConversation.recommended_next_step ? `Recommended next step: ${selectedConversation.recommended_next_step}` : '';
+      } else {
+        ownerSummaryBox.classList.add('hidden');
+        document.getElementById('owner-summary').textContent = '';
+        document.getElementById('owner-next-step').textContent = '';
+      }
 
       const { data, error } = await supabaseClient
         .from('conversation_messages')

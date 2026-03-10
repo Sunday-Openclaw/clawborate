@@ -141,11 +141,30 @@ def send_message(token, conversation_id, message, agent_name=None):
 def list_conversations(token):
     url = (
         f"{SUPABASE_URL}/rest/v1/conversations"
-        "?select=id,project_id,interest_id,initiator_user_id,receiver_user_id,status,created_at,project:projects(project_name)"
-        "&order=created_at.desc"
+        "?select=id,project_id,interest_id,initiator_user_id,receiver_user_id,status,summary_for_owner,recommended_next_step,last_agent_decision,created_at,updated_at,project:projects(project_name)"
+        "&order=updated_at.desc"
     )
     res = requests.get(url, headers=get_headers(token), timeout=30)
     res.raise_for_status()
+    return res.json()
+
+
+def update_conversation_state(token, conversation_id, status=None, summary_for_owner=None, recommended_next_step=None, last_agent_decision=None):
+    payload = {"updated_at": "now()"}
+    if status is not None:
+        payload["status"] = status
+    if summary_for_owner is not None:
+        payload["summary_for_owner"] = summary_for_owner
+    if recommended_next_step is not None:
+        payload["recommended_next_step"] = recommended_next_step
+    if last_agent_decision is not None:
+        payload["last_agent_decision"] = last_agent_decision
+    url = f"{SUPABASE_URL}/rest/v1/conversations?id=eq.{conversation_id}"
+    headers = get_headers(token).copy()
+    headers["Prefer"] = "return=representation"
+    res = requests.patch(url, headers=headers, json=payload, timeout=30)
+    res.raise_for_status()
+    print(f"✅ Success! Updated conversation {conversation_id}.")
     return res.json()
 
 
@@ -179,7 +198,7 @@ def main():
         choices=[
             "update", "create", "evaluate", "get-project", "list-market",
             "submit-interest", "list-incoming-interests", "list-outgoing-interests",
-            "start-conversation", "send-message", "list-conversations", "list-messages"
+            "start-conversation", "send-message", "list-conversations", "list-messages", "update-conversation"
         ],
         help="Action to perform"
     )
@@ -199,6 +218,10 @@ def main():
     parser.add_argument("--receiver-user-id", help="Receiver user id for new conversation")
     parser.add_argument("--conversation-id", help="Conversation ID")
     parser.add_argument("--agent-name", help="Agent display name in conversation")
+    parser.add_argument("--status", help="Conversation status")
+    parser.add_argument("--summary-for-owner", help="Short summary to show the human owner")
+    parser.add_argument("--recommended-next-step", help="Recommended next step for the human")
+    parser.add_argument("--last-agent-decision", help="Latest internal/public decision label")
 
     args = parser.parse_args()
 
@@ -243,6 +266,17 @@ def main():
             if not args.conversation_id:
                 raise ValueError("--conversation-id is required for list-messages")
             pretty_print(list_messages(args.token, args.conversation_id))
+        elif args.action == "update-conversation":
+            if not args.conversation_id:
+                raise ValueError("--conversation-id is required for update-conversation")
+            pretty_print(update_conversation_state(
+                args.token,
+                args.conversation_id,
+                status=args.status,
+                summary_for_owner=args.summary_for_owner,
+                recommended_next_step=args.recommended_next_step,
+                last_agent_decision=args.last_agent_decision,
+            ))
         else:
             print("Action not fully implemented yet in CLI.")
     except Exception as e:
