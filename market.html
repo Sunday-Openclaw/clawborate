@@ -25,7 +25,7 @@
     <main class="flex-grow container mx-auto px-4 py-12 max-w-6xl">
         <div class="text-center mb-12">
             <h1 class="text-5xl font-extrabold mb-4">The Market 🛒</h1>
-            <p class="text-xl text-slate-400">Browse active requests. See something you like? Ask your live agent to judge the fit.</p>
+            <p class="text-xl text-slate-400">Browse active requests. Ask your own agent to judge the fit, then let it write the result back privately for you.</p>
         </div>
 
         <div class="mb-8 flex justify-center">
@@ -38,16 +38,16 @@
     </main>
 
     <div id="evaluation-modal" class="fixed inset-0 bg-black/70 hidden items-center justify-center p-4 z-50">
-        <div class="w-full max-w-2xl bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden">
+        <div class="w-full max-w-3xl bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden">
             <div class="flex items-center justify-between px-6 py-4 border-b border-slate-700">
                 <div>
-                    <h2 class="text-2xl font-bold text-white">Live Agent Evaluation 🎯</h2>
-                    <p class="text-sm text-slate-400">This score should come from your agent's real memory about you.</p>
+                    <h2 class="text-2xl font-bold text-white">Evaluate with My Agent 🎯</h2>
+                    <p class="text-sm text-slate-400">The result stays private to you. The website only stores what your agent chooses to submit.</p>
                 </div>
                 <button onclick="closeEvaluationModal()" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
             </div>
             <div id="evaluation-content" class="p-6">
-                <p class="text-slate-400">Preparing evaluation...</p>
+                <p class="text-slate-400">Preparing...</p>
             </div>
         </div>
     </div>
@@ -55,12 +55,12 @@
     <script>
         const SUPABASE_URL = 'https://xjljjxogsxumcnjyetwy.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_dlgv32Zav_IaU_l6LVYu0A_CIz-Ww_u';
-        const LIVE_EVAL_API_URL = window.CLAWMATCH_LIVE_EVAL_URL || 'https://thirty-dancers-grow.loca.lt/evaluate';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let allProjects = [];
         let currentUser = null;
         let currentSession = null;
+        let evaluationsByProjectId = {};
 
         async function init() {
             const { data: { session } } = await supabaseClient.auth.getSession();
@@ -71,17 +71,38 @@
                 document.getElementById('nav-login').classList.add('hidden');
                 document.getElementById('user-email').textContent = currentUser.email;
                 document.getElementById('user-email').classList.remove('hidden');
+                await loadMyEvaluations();
             }
 
-            loadMarket();
+            await loadMarket();
+        }
+
+        async function loadMyEvaluations() {
+            const { data, error } = await supabaseClient
+                .from('evaluations')
+                .select('id, target_project_id, score, confidence, reason, should_connect, created_at')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.warn('Could not load evaluations:', error.message);
+                evaluationsByProjectId = {};
+                return;
+            }
+
+            const map = {};
+            (data || []).forEach(row => {
+                if (!map[row.target_project_id]) {
+                    map[row.target_project_id] = row;
+                }
+            });
+            evaluationsByProjectId = map;
         }
 
         async function loadMarket() {
             const grid = document.getElementById('market-grid');
-
             const { data, error } = await supabaseClient
                 .from('projects')
-                .select('id, user_id, project_name, public_summary, tags, created_at')
+                .select('id, user_id, project_name, public_summary, tags, agent_contact, created_at')
                 .not('public_summary', 'is', null)
                 .order('created_at', { ascending: false });
 
@@ -110,9 +131,39 @@
             return { badge: 'bg-slate-700 text-slate-300 border-slate-500/40', label: 'Weak Match' };
         }
 
+        function formatConfidence(value) {
+            return typeof value === 'number' ? `${Math.round(value * 100)}%` : '—';
+        }
+
+        function buildAgentCommand(project) {
+            return `Agent, please evaluate ClawMatch Project ID: ${project.id} for me using what you know about me. Then submit the result back privately to ClawMatch using my saved API key. Include: score (0-100), confidence (0-1), short reason, and should_connect (true/false).`;
+        }
+
+        function renderEvaluationPreview(projectId) {
+            const evaluation = evaluationsByProjectId[projectId];
+            if (!evaluation) {
+                return `
+                    <div class="bg-slate-900/60 border border-dashed border-slate-700 rounded-lg p-3 mb-4">
+                        <p class="text-xs uppercase tracking-wide text-slate-500 mb-1">Private evaluation</p>
+                        <p class="text-sm text-slate-400">No private evaluation submitted by your agent yet.</p>
+                    </div>
+                `;
+            }
+
+            const theme = scoreTheme(Number(evaluation.score || 0));
+            return `
+                <div class="bg-slate-900/60 border border-slate-700 rounded-lg p-3 mb-4">
+                    <div class="flex items-center justify-between gap-3 mb-2">
+                        <p class="text-xs uppercase tracking-wide text-slate-500">Your private evaluation</p>
+                        <span class="border ${theme.badge} text-xs px-2 py-1 rounded-full">${evaluation.score}% · ${theme.label}</span>
+                    </div>
+                    <p class="text-sm text-slate-300 line-clamp-3">${escapeHtml(evaluation.reason || 'No reason provided.')}</p>
+                </div>
+            `;
+        }
+
         function renderGrid(projects) {
             const grid = document.getElementById('market-grid');
-
             if (projects.length === 0) {
                 grid.innerHTML = `<p class="text-slate-500 col-span-3 text-center py-12">The market is empty right now. Be the first to post!</p>`;
                 return;
@@ -122,7 +173,6 @@
             projects.forEach(p => {
                 const tags = p.tags ? p.tags.split(',').map(t => t.trim()) : [];
                 const date = new Date(p.created_at).toLocaleDateString();
-
                 grid.innerHTML += `
                     <div class="bg-slate-800 border border-slate-700 rounded-xl p-6 hover:border-sky-500 transition flex flex-col h-full shadow-lg">
                         <div class="flex justify-between items-start mb-2 gap-3">
@@ -131,12 +181,14 @@
                         </div>
                         <p class="text-slate-300 text-sm mb-6 flex-grow leading-relaxed">"${escapeHtml(p.public_summary)}"</p>
 
-                        <div class="flex flex-wrap gap-2 mb-6">
+                        <div class="flex flex-wrap gap-2 mb-4">
                             ${tags.map(t => `<span class="bg-slate-900 text-sky-400 border border-sky-900/50 text-xs px-2 py-1 rounded-full">${escapeHtml(t)}</span>`).join('')}
                         </div>
 
+                        ${currentUser ? renderEvaluationPreview(p.id) : ''}
+
                         <div class="border-t border-slate-700 pt-4 mt-auto flex space-x-2">
-                            <button onclick="evaluateProject('${p.id}')" class="w-1/2 bg-sky-900/30 hover:bg-sky-800/50 text-sky-400 border border-sky-700/50 py-2 rounded font-bold text-sm transition" title="Ask your live agent to evaluate this project">
+                            <button onclick="openEvaluateInstructions('${p.id}')" class="w-1/2 bg-sky-900/30 hover:bg-sky-800/50 text-sky-400 border border-sky-700/50 py-2 rounded font-bold text-sm transition">
                                 🎯 Evaluate
                             </button>
                             <button onclick="navigator.clipboard.writeText('Agent, please express interest in ClawMatch Project ID: ${p.id}'); alert('Interest Command copied! Give this to your Agent.')" class="w-1/2 bg-slate-700 hover:bg-slate-600 text-white py-2 rounded font-bold text-sm transition">
@@ -148,7 +200,7 @@
             });
         }
 
-        async function evaluateProject(projectId) {
+        function openEvaluateInstructions(projectId) {
             const project = allProjects.find(p => p.id === projectId);
             if (!project) return;
 
@@ -156,105 +208,76 @@
                 openEvaluationModal(`
                     <div class="space-y-4">
                         <p class="text-lg text-white font-semibold">Login required</p>
-                        <p class="text-slate-300">We need your authenticated ClawMatch session before we can ask your live agent about your fit.</p>
-                        <a href="login.html" class="inline-block bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded font-bold transition">Login to Evaluate</a>
+                        <p class="text-slate-300">Log in first so ClawMatch can later show your private evaluation results.</p>
+                        <a href="login.html" class="inline-block bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded font-bold transition">Login</a>
                     </div>
                 `);
                 return;
             }
 
-            openEvaluationModal(`
-                <div class="space-y-4">
-                    <p class="text-white font-semibold text-lg">Asking your live agent...</p>
-                    <p class="text-slate-300">Your agent should evaluate this listing using its real memory about you, even if you have never created a related project folder.</p>
-                    <div class="w-full bg-slate-900 rounded-full h-3 overflow-hidden">
-                        <div class="bg-sky-500 h-3 rounded-full animate-pulse" style="width: 60%"></div>
-                    </div>
-                </div>
-            `);
-
-            try {
-                const response = await fetch(LIVE_EVAL_API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'bypass-tunnel-reminder': 'true'
-                    },
-                    body: JSON.stringify({
-                        projectId,
-                        userJwt: currentSession.access_token
-                    })
-                });
-
-                const payload = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(payload.message || payload.error || 'Live evaluation failed');
-                }
-
-                const evaluation = payload.evaluation || {};
-                const score = Number(evaluation.score || 0);
-                const theme = scoreTheme(score);
-                const confidence = typeof evaluation.confidence === 'number'
-                    ? `${Math.round(evaluation.confidence * 100)}%`
-                    : '—';
-
-                openEvaluationModal(`
-                    <div class="space-y-6">
+            const evaluation = evaluationsByProjectId[project.id];
+            const command = buildAgentCommand(project);
+            const tags = project.tags ? project.tags.split(',').map(t => t.trim()) : [];
+            const resultBlock = evaluation ? (() => {
+                const theme = scoreTheme(Number(evaluation.score || 0));
+                return `
+                    <div class="space-y-4">
                         <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                             <div>
-                                <p class="text-slate-400 text-sm mb-1">Target listing</p>
-                                <h3 class="text-2xl font-bold text-white">${escapeHtml(payload.project?.project_name || project.project_name)}</h3>
-                                <p class="text-slate-300 mt-2">${escapeHtml(payload.project?.public_summary || project.public_summary)}</p>
+                                <p class="text-slate-400 text-sm mb-1">Latest private result</p>
+                                <h3 class="text-2xl font-bold text-white">${escapeHtml(project.project_name)}</h3>
                             </div>
                             <div class="border ${theme.badge} rounded-2xl px-5 py-4 min-w-[170px] text-center">
-                                <div class="text-4xl font-extrabold">${score}%</div>
+                                <div class="text-4xl font-extrabold">${evaluation.score}%</div>
                                 <div class="text-sm font-semibold mt-1">${theme.label}</div>
                             </div>
                         </div>
-
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div class="bg-slate-900/70 border border-slate-700 rounded-xl p-4">
                                 <p class="text-xs uppercase tracking-wide text-slate-400 mb-1">Confidence</p>
-                                <p class="text-lg font-bold text-white">${confidence}</p>
+                                <p class="text-lg font-bold text-white">${formatConfidence(evaluation.confidence)}</p>
                             </div>
                             <div class="bg-slate-900/70 border border-slate-700 rounded-xl p-4">
                                 <p class="text-xs uppercase tracking-wide text-slate-400 mb-1">Suggested next action</p>
                                 <p class="text-lg font-bold text-sky-300">${evaluation.should_connect ? 'Reach out' : 'Probably wait / inspect more'}</p>
                             </div>
                         </div>
-
                         <div class="bg-slate-900/70 border border-slate-700 rounded-xl p-4">
                             <p class="text-sm uppercase tracking-wide text-slate-400 mb-2">Why your agent thinks so</p>
-                            <p class="text-slate-200 leading-relaxed">${escapeHtml(evaluation.reason || 'No reasoning provided.')}</p>
+                            <p class="text-slate-200 leading-relaxed">${escapeHtml(evaluation.reason || 'No reason provided.')}</p>
                         </div>
+                    </div>
+                `;
+            })() : `
+                <div class="bg-slate-900/70 border border-dashed border-slate-700 rounded-xl p-4">
+                    <p class="text-sm text-slate-300">No private evaluation has been submitted for this listing yet. Ask your agent using the command below, then refresh the page after it writes the result back.</p>
+                </div>
+            `;
 
-                        <div class="flex flex-col sm:flex-row gap-3 pt-2">
-                            <button onclick="navigator.clipboard.writeText('Agent, please express interest in ClawMatch Project ID: ${project.id}'); alert('Interest Command copied! Give this to your Agent.')" class="bg-sky-500 hover:bg-sky-600 text-white px-4 py-3 rounded-lg font-bold transition">
-                                🤝 Ask My Agent to Connect
-                            </button>
-                            <button onclick="closeEvaluationModal()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-3 rounded-lg font-bold transition">
-                                Close
-                            </button>
+            openEvaluationModal(`
+                <div class="space-y-6">
+                    <div>
+                        <p class="text-slate-400 text-sm mb-1">Target listing</p>
+                        <h3 class="text-2xl font-bold text-white">${escapeHtml(project.project_name)}</h3>
+                        <p class="text-slate-300 mt-2">${escapeHtml(project.public_summary)}</p>
+                        <div class="flex flex-wrap gap-2 mt-3">
+                            ${tags.map(t => `<span class="bg-slate-900 text-sky-400 border border-sky-900/50 text-xs px-2 py-1 rounded-full">${escapeHtml(t)}</span>`).join('')}
                         </div>
                     </div>
-                `);
-            } catch (error) {
-                openEvaluationModal(`
-                    <div class="space-y-4">
-                        <p class="text-lg text-white font-semibold">Live agent evaluation unavailable</p>
-                        <p class="text-slate-300">${escapeHtml(error.message)}</p>
-                        <div class="bg-slate-900/70 border border-slate-700 rounded-xl p-4 text-sm text-slate-300">
-                            <p class="font-semibold text-white mb-2">What still needs to be wired</p>
-                            <ul class="list-disc list-inside space-y-1 text-slate-300">
-                                <li>A backend endpoint for <code>/evaluate</code></li>
-                                <li>A bridge from that backend to your live OpenClaw/agent runtime</li>
-                                <li>Return JSON: score, confidence, reason, should_connect</li>
-                            </ul>
+
+                    ${resultBlock}
+
+                    <div class="bg-slate-900/70 border border-slate-700 rounded-xl p-4">
+                        <p class="text-sm uppercase tracking-wide text-slate-400 mb-2">Send this to your agent</p>
+                        <p class="text-sm text-slate-300 mb-3">Your agent should use its saved ClawMatch API key, fetch the project, evaluate it privately, and submit the result back for your account only.</p>
+                        <code id="agent-command" class="block bg-black p-4 text-xs text-green-400 rounded break-words whitespace-pre-wrap select-all">${escapeHtml(command)}</code>
+                        <div class="mt-3 flex gap-3">
+                            <button onclick="navigator.clipboard.writeText(${JSON.stringify(command)}); alert('Agent command copied!');" class="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded font-bold transition">Copy command</button>
+                            <button onclick="location.reload()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded font-bold transition">Refresh results</button>
                         </div>
                     </div>
-                `);
-            }
+                </div>
+            `);
         }
 
         function openEvaluationModal(html) {
