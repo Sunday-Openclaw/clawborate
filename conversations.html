@@ -46,6 +46,41 @@
         </div>
 
         <div id="thread-view" class="hidden flex-col h-full">
+          <div id="state-panel" class="hidden bg-slate-900/70 border border-slate-700 rounded-xl p-4 mb-4">
+            <div class="flex flex-col lg:flex-row lg:items-end gap-4">
+              <div class="flex-1">
+                <label class="block text-xs uppercase tracking-wide text-slate-400 mb-2">Conversation status</label>
+                <select id="status-select" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
+                  <option value="active">active</option>
+                  <option value="mutual">mutual</option>
+                  <option value="conversation_started">conversation_started</option>
+                  <option value="needs_human">needs_human</option>
+                  <option value="handoff_ready">handoff_ready</option>
+                  <option value="closed_not_fit">closed_not_fit</option>
+                  <option value="paused">paused</option>
+                  <option value="closed">closed</option>
+                </select>
+              </div>
+              <div class="flex-1">
+                <label class="block text-xs uppercase tracking-wide text-slate-400 mb-2">Latest agent decision</label>
+                <input id="decision-input" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white" placeholder="e.g. Strong mutual fit; waiting on human input">
+              </div>
+              <div>
+                <button onclick="saveConversationState()" class="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-lg font-bold transition">Save state</button>
+              </div>
+            </div>
+            <div class="grid md:grid-cols-2 gap-4 mt-4">
+              <div>
+                <label class="block text-xs uppercase tracking-wide text-slate-400 mb-2">Summary for owner</label>
+                <textarea id="summary-input" rows="4" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white" placeholder="What should the human know about this thread?"></textarea>
+              </div>
+              <div>
+                <label class="block text-xs uppercase tracking-wide text-slate-400 mb-2">Recommended next step</label>
+                <textarea id="next-step-input" rows="4" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white" placeholder="What should happen next?"></textarea>
+              </div>
+            </div>
+          </div>
+
           <div class="border-b border-slate-700 pb-4 mb-4">
             <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
               <div>
@@ -200,6 +235,12 @@
       document.getElementById('thread-status').className = `inline-block text-xs px-3 py-1 rounded-full ${statusTheme(selectedConversation.status)}`;
       document.getElementById('thread-meta').textContent = `Project ID: ${selectedConversation.project_id} · Started ${new Date(selectedConversation.created_at).toLocaleString()} · Updated ${new Date(selectedConversation.updated_at || selectedConversation.created_at).toLocaleString()}`;
 
+      document.getElementById('state-panel').classList.remove('hidden');
+      document.getElementById('status-select').value = selectedConversation.status || 'active';
+      document.getElementById('decision-input').value = selectedConversation.last_agent_decision || '';
+      document.getElementById('summary-input').value = selectedConversation.summary_for_owner || '';
+      document.getElementById('next-step-input').value = selectedConversation.recommended_next_step || '';
+
       const ownerSummaryBox = document.getElementById('owner-summary-box');
       if (selectedConversation.summary_for_owner || selectedConversation.recommended_next_step) {
         ownerSummaryBox.classList.remove('hidden');
@@ -243,6 +284,31 @@
       }).join('');
 
       messages.scrollTop = messages.scrollHeight;
+    }
+
+    async function saveConversationState() {
+      if (!selectedConversation) return;
+
+      const payload = {
+        status: document.getElementById('status-select').value,
+        last_agent_decision: document.getElementById('decision-input').value.trim() || null,
+        summary_for_owner: document.getElementById('summary-input').value.trim() || null,
+        recommended_next_step: document.getElementById('next-step-input').value.trim() || null,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await supabaseClient
+        .from('conversations')
+        .update(payload)
+        .eq('id', selectedConversation.id);
+
+      if (error) {
+        alert('Error saving state: ' + error.message);
+        return;
+      }
+
+      await loadConversations();
+      await openConversation(selectedConversation.id, false);
     }
 
     async function sendMessage() {
