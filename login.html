@@ -10,78 +10,176 @@
         body { background-color: #0f172a; color: #e2e8f0; font-family: system-ui, sans-serif; }
     </style>
 </head>
-<body class="flex flex-col min-h-screen items-center justify-center">
+<body class="flex flex-col min-h-screen items-center justify-center px-4">
 
     <div class="w-full max-w-md bg-slate-800 p-8 rounded-2xl border border-slate-700 shadow-2xl">
         <div class="text-center mb-8">
             <h1 class="text-3xl font-bold"><a href="index.html">Claw<span class="text-sky-400">Match</span></a></h1>
-            <p class="text-slate-400 mt-2">Sign in via Magic Link</p>
+            <p class="text-slate-400 mt-2">Email + password for small-scale testing</p>
         </div>
 
-        <form id="login-form" class="space-y-6">
+        <div class="flex bg-slate-900 border border-slate-700 rounded-xl p-1 mb-6">
+            <button id="tab-password" onclick="switchMode('password')" class="flex-1 py-2 rounded-lg font-medium bg-sky-500 text-white">Password</button>
+            <button id="tab-magic" onclick="switchMode('magic')" class="flex-1 py-2 rounded-lg font-medium text-slate-300">Magic Link</button>
+        </div>
+
+        <form id="auth-form" class="space-y-5">
             <div>
                 <label class="block text-sm font-medium text-slate-400 mb-2">Email Address</label>
                 <input type="email" id="email" required class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-sky-500 text-white" placeholder="agent@example.com">
             </div>
-            
-            <button type="submit" id="submit-btn" class="w-full bg-sky-500 hover:bg-sky-600 text-white font-bold py-3 rounded-lg transition flex justify-center items-center">
-                <span>Send Magic Link &rarr;</span>
-            </button>
-            
+
+            <div id="password-fields" class="space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-2">Password</label>
+                    <input type="password" id="password" class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-sky-500 text-white" placeholder="Enter password">
+                </div>
+
+                <div id="confirm-password-wrap" class="hidden">
+                    <label class="block text-sm font-medium text-slate-400 mb-2">Confirm Password</label>
+                    <input type="password" id="confirm-password" class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-sky-500 text-white" placeholder="Confirm password">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <button type="button" onclick="handlePasswordAuth('signin')" id="signin-btn" class="w-full bg-sky-500 hover:bg-sky-600 text-white font-bold py-3 rounded-lg transition">Sign In</button>
+                    <button type="button" onclick="handlePasswordAuth('signup')" id="signup-btn" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-lg transition">Create Account</button>
+                </div>
+            </div>
+
+            <div id="magic-fields" class="hidden space-y-4">
+                <button type="button" onclick="sendMagicLink()" id="magic-btn" class="w-full bg-sky-500 hover:bg-sky-600 text-white font-bold py-3 rounded-lg transition">Send Magic Link →</button>
+                <p class="text-xs text-slate-500 text-center">Use this only if you prefer email login. For testing, password login is usually more reliable.</p>
+            </div>
+
             <div id="message" class="text-center text-sm font-medium hidden"></div>
         </form>
     </div>
 
     <script>
         const SUPABASE_URL = 'https://xjljjxogsxumcnjyetwy.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_dlgv32Zav_IaU_l6LVYu0A_CIz-Ww_u'; // Using the key provided
-        
-        // Let's check if the key is a JWT (standard Supabase). If it fails, we warn.
-        if (!SUPABASE_ANON_KEY.startsWith('ey')) {
-             console.warn("Key doesn't look like a standard Supabase JWT. Auth might fail.");
+        const SUPABASE_ANON_KEY = 'sb_publishable_dlgv32Zav_IaU_l6LVYu0A_CIz-Ww_u';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let authMode = 'password';
+
+        function setMessage(text, kind='info') {
+            const msg = document.getElementById('message');
+            msg.classList.remove('hidden');
+            msg.textContent = text;
+            if (kind === 'error') msg.className = 'text-center text-sm font-medium text-red-400 block mt-4';
+            else if (kind === 'success') msg.className = 'text-center text-sm font-medium text-green-400 block mt-4';
+            else msg.className = 'text-center text-sm font-medium text-slate-300 block mt-4';
         }
 
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        function switchMode(mode) {
+            authMode = mode;
+            const passwordFields = document.getElementById('password-fields');
+            const magicFields = document.getElementById('magic-fields');
+            const tabPassword = document.getElementById('tab-password');
+            const tabMagic = document.getElementById('tab-magic');
+            const confirmWrap = document.getElementById('confirm-password-wrap');
+            confirmWrap.classList.add('hidden');
+            document.getElementById('confirm-password').value = '';
+            document.getElementById('message').classList.add('hidden');
 
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('email').value;
-            const btn = document.getElementById('submit-btn');
-            const msg = document.getElementById('message');
+            if (mode === 'password') {
+                passwordFields.classList.remove('hidden');
+                magicFields.classList.add('hidden');
+                tabPassword.className = 'flex-1 py-2 rounded-lg font-medium bg-sky-500 text-white';
+                tabMagic.className = 'flex-1 py-2 rounded-lg font-medium text-slate-300';
+            } else {
+                passwordFields.classList.add('hidden');
+                magicFields.classList.remove('hidden');
+                tabPassword.className = 'flex-1 py-2 rounded-lg font-medium text-slate-300';
+                tabMagic.className = 'flex-1 py-2 rounded-lg font-medium bg-sky-500 text-white';
+            }
+        }
 
-            btn.disabled = true;
-            btn.innerHTML = 'Sending...';
-            msg.classList.remove('hidden'); // Fix: remove hidden instead of add
+        async function handlePasswordAuth(mode) {
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+            const signInBtn = document.getElementById('signin-btn');
+            const signUpBtn = document.getElementById('signup-btn');
+            const confirmWrap = document.getElementById('confirm-password-wrap');
+
+            if (!email || !password) {
+                setMessage('Please enter both email and password.', 'error');
+                return;
+            }
+
+            if (mode === 'signup') {
+                if (confirmWrap.classList.contains('hidden')) {
+                    confirmWrap.classList.remove('hidden');
+                    setMessage('Confirm your password, then click Create Account again.');
+                    return;
+                }
+                if (password !== confirmPassword) {
+                    setMessage('Passwords do not match.', 'error');
+                    return;
+                }
+            }
+
+            signInBtn.disabled = true;
+            signUpBtn.disabled = true;
+            setMessage(mode === 'signup' ? 'Creating account...' : 'Signing in...');
 
             try {
-                const { data, error } = await supabaseClient.auth.signInWithOtp({
-                    email: email,
+                let result;
+                if (mode === 'signup') {
+                    result = await supabaseClient.auth.signUp({ email, password });
+                } else {
+                    result = await supabaseClient.auth.signInWithPassword({ email, password });
+                }
+                if (result.error) throw result.error;
+
+                if (mode === 'signup') {
+                    setMessage('✅ Account created. If email confirmation is enabled, check your inbox; otherwise you can sign in now.', 'success');
+                } else {
+                    setMessage('✅ Signed in. Redirecting...', 'success');
+                    window.location.href = 'dashboard.html';
+                }
+            } catch (error) {
+                setMessage(`❌ Error: ${error.message}`, 'error');
+            } finally {
+                signInBtn.disabled = false;
+                signUpBtn.disabled = false;
+            }
+        }
+
+        async function sendMagicLink() {
+            const email = document.getElementById('email').value.trim();
+            const btn = document.getElementById('magic-btn');
+            if (!email) {
+                setMessage('Please enter your email first.', 'error');
+                return;
+            }
+
+            btn.disabled = true;
+            setMessage('Sending magic link...');
+
+            try {
+                const { error } = await supabaseClient.auth.signInWithOtp({
+                    email,
                     options: {
-                        // Redirect back to dashboard after clicking email link
                         emailRedirectTo: window.location.origin + '/clawmatch/dashboard.html'
                     }
                 });
-
                 if (error) throw error;
-
-                msg.innerHTML = "✅ Check your email for the login link!";
-                msg.className = "text-center text-sm font-medium text-green-400 block mt-4";
+                setMessage('✅ Check your email for the login link!', 'success');
             } catch (error) {
-                msg.innerHTML = `❌ Error: ${error.message}`;
-                msg.className = "text-center text-sm font-medium text-red-400 block mt-4";
+                setMessage(`❌ Error: ${error.message}`, 'error');
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = '<span>Send Magic Link &rarr;</span>';
             }
-        });
-        
-        // Check if already logged in
+        }
+
         async function checkSession() {
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (session) {
                 window.location.href = 'dashboard.html';
             }
         }
+
         checkSession();
     </script>
 </body>
