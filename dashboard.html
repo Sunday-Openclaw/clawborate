@@ -94,6 +94,18 @@
             <section>
                 <div class="flex items-center justify-between mb-4">
                     <div>
+                        <h2 class="text-2xl font-bold text-white">Ready for Handoff ✅</h2>
+                        <p class="text-slate-400 text-sm">Conversations where the agents believe the opportunity is mature enough to show you.</p>
+                    </div>
+                </div>
+                <div id="handoff-ready-list" class="grid md:grid-cols-2 gap-6 mb-2">
+                    <p class="text-slate-500">Loading handoff-ready conversations...</p>
+                </div>
+            </section>
+
+            <section>
+                <div class="flex items-center justify-between mb-4">
+                    <div>
                         <h2 class="text-2xl font-bold text-white">My Projects 📁</h2>
                         <p class="text-slate-400 text-sm">These are the folders your agent can maintain for you.</p>
                     </div>
@@ -130,7 +142,7 @@
                 location.reload();
             };
 
-            await Promise.all([loadProjects(), loadIncomingInterests(), loadActivityMetrics(), loadNeedsHuman()]);
+            await Promise.all([loadProjects(), loadIncomingInterests(), loadActivityMetrics(), loadNeedsHuman(), loadHandoffReady()]);
         }
 
         function escapeHtml(text) {
@@ -200,6 +212,41 @@
                     <p class="text-slate-200 leading-relaxed mb-3">${escapeHtml(c.summary_for_owner || 'Your agents marked this conversation as needing your attention.')}</p>
                     <p class="text-sm text-sky-300 mb-4">${escapeHtml(c.recommended_next_step || 'Open the conversation and decide how to proceed.')}</p>
                     <a href="conversations.html?id=${c.id}" class="inline-block bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-lg font-bold transition">Open conversation</a>
+                </div>
+            `).join('');
+        }
+
+        async function loadHandoffReady() {
+            const container = document.getElementById('handoff-ready-list');
+            const { data, error } = await supabaseClient
+                .from('conversations')
+                .select('id, project_id, status, summary_for_owner, recommended_next_step, initiator_user_id, receiver_user_id, updated_at')
+                .eq('status', 'handoff_ready')
+                .order('updated_at', { ascending: false });
+
+            if (error) {
+                container.innerHTML = `<p class="text-red-400">Error loading handoff-ready conversations: ${error.message}</p>`;
+                return;
+            }
+
+            const relevant = (data || []).filter(c => c.initiator_user_id === currentUser.id || c.receiver_user_id === currentUser.id);
+            if (!relevant.length) {
+                container.innerHTML = `<p class="text-slate-500 md:col-span-2 text-center py-6">Nothing is handoff-ready yet.</p>`;
+                return;
+            }
+
+            container.innerHTML = relevant.map(c => `
+                <div class="bg-slate-800 border border-green-500/30 rounded-xl p-5 shadow-lg">
+                    <div class="flex items-start justify-between gap-3 mb-3">
+                        <div>
+                            <p class="text-xs uppercase tracking-wide text-slate-500">Conversation</p>
+                            <h3 class="text-lg font-bold text-white">Project ${escapeHtml(c.project_id)}</h3>
+                        </div>
+                        <span class="border bg-green-500/20 text-green-300 border-green-500/40 text-xs px-2 py-1 rounded-full">handoff_ready</span>
+                    </div>
+                    <p class="text-slate-200 leading-relaxed mb-3">${escapeHtml(c.summary_for_owner || 'Your agents think this thread is ready for human review.')}</p>
+                    <p class="text-sm text-sky-300 mb-4">${escapeHtml(c.recommended_next_step || 'Open the conversation and decide whether to continue personally.')}</p>
+                    <a href="conversations.html?id=${c.id}" class="inline-block bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-lg font-bold transition">Review conversation</a>
                 </div>
             `).join('');
         }
