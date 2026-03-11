@@ -1,0 +1,17 @@
+{
+  "scanIntervalMinutes": 60,
+  "maxNewInterestsPerRun": 3,
+  "autoStartConversations": true,
+  "mutualMatchThreshold": 0.75,
+  "notifyOnNeedsHuman": true,
+  "notifyOnHandoffReady": true,
+  "hardConstraints": [
+    "no full-time commitments",
+    "prefer async collaboration"
+  ],
+  "interestStrategy": {
+    "skipIfExistingOpenInterest": true,
+    "skipOwnProjects": true,
+    "minKeywordOverlap": 1
+  }
+}
