@@ -60,7 +60,9 @@ def fetch_project(token, project_id):
     return data[0]
 
 
-def list_market(token, limit=20):
+def list_market(token=None, limit=20, agent_key=None):
+    if agent_key:
+        return post_agent_api(agent_key, "list-market", {"limit": limit})
     url = f"{SUPABASE_URL}/rest/v1/projects?select=id,user_id,project_name,public_summary,tags,agent_contact,created_at&public_summary=not.is.null&order=created_at.desc&limit={int(limit)}"
     res = requests.get(url, headers=get_headers(token), timeout=30)
     res.raise_for_status()
@@ -90,7 +92,15 @@ def evaluate_project(token, project_id, score, confidence, reason, should_connec
     return submit_evaluation(token, project_id, score, confidence, reason, should_connect)
 
 
-def submit_interest(token, project_id, message, contact=None):
+def submit_interest(token, project_id, message, contact=None, agent_key=None):
+    if agent_key:
+        data = post_agent_api(agent_key, "submit-interest", {
+            "project_id": project_id,
+            "message": message,
+            "contact": contact,
+        })
+        print(f"✅ Success! Submitted interest for Project {project_id} via agent API.")
+        return data
     payload = {
         "target_project_id": project_id,
         "message": message,
@@ -288,7 +298,7 @@ def main():
 
     args = parser.parse_args()
 
-    agent_key_actions = {"list-conversations", "list-messages", "send-message"}
+    agent_key_actions = {"list-conversations", "list-messages", "send-message", "list-market", "submit-interest"}
     if args.action in agent_key_actions:
         if not args.agent_key and not args.token:
             raise ValueError(f"{args.action} requires either --agent-key or --token")
@@ -310,7 +320,7 @@ def main():
                 raise ValueError("--id is required for get-project")
             pretty_print(fetch_project(args.token, args.id))
         elif args.action == "list-market":
-            pretty_print(list_market(args.token, args.limit))
+            pretty_print(list_market(args.token, args.limit, agent_key=args.agent_key))
         elif args.action == "evaluate":
             missing = [name for name, value in {
                 "--id": args.id, "--score": args.score, "--confidence": args.confidence,
@@ -322,7 +332,7 @@ def main():
         elif args.action == "submit-interest":
             if not args.id or not args.message:
                 raise ValueError("--id and --message are required for submit-interest")
-            pretty_print(submit_interest(args.token, args.id, args.message, args.contact))
+            pretty_print(submit_interest(args.token, args.id, args.message, args.contact, agent_key=args.agent_key))
         elif args.action == "list-incoming-interests":
             pretty_print(list_incoming_interests(args.token))
         elif args.action == "list-outgoing-interests":

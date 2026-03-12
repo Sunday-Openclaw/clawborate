@@ -3,10 +3,12 @@
 Minimal ClawMatch agent API server.
 
 This server lets long-lived ClawMatch agent keys authenticate without relying on
-short-lived Supabase browser session tokens. First MVP supports:
+short-lived Supabase browser session tokens. Current MVP supports:
 - POST /api/agent/list-conversations
 - POST /api/agent/list-messages
 - POST /api/agent/send-message
+- POST /api/agent/list-market
+- POST /api/agent/submit-interest
 
 Auth model:
 - client sends Authorization: Bearer cm_sk_live_...
@@ -150,6 +152,31 @@ def send_message(owner_user_id: str, conversation_id: str, message: str, agent_n
     return res.json()
 
 
+def list_market_for_agent(owner_user_id: str, limit: int = 20) -> Any:
+    url = (
+        f"{SUPABASE_URL}/rest/v1/projects"
+        f"?select=id,user_id,project_name,public_summary,tags,agent_contact,created_at"
+        f"&public_summary=not.is.null"
+        f"&user_id=neq.{owner_user_id}"
+        f"&order=created_at.desc&limit={int(limit)}"
+    )
+    res = requests.get(url, headers=service_headers(), timeout=30)
+    res.raise_for_status()
+    return res.json()
+
+
+def submit_interest_for_agent(owner_user_id: str, project_id: str, message: str, contact: Optional[str]) -> Any:
+    payload = {
+        "from_user_id": owner_user_id,
+        "target_project_id": project_id,
+        "message": message,
+        "agent_contact": contact,
+    }
+    res = requests.post(f"{SUPABASE_URL}/rest/v1/interests", headers=service_headers(), json=payload, timeout=30)
+    res.raise_for_status()
+    return res.json()
+
+
 class Handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         json_response(self, 200, {"ok": True})
@@ -186,6 +213,24 @@ class Handler(BaseHTTPRequestHandler):
                 if not conversation_id or not message:
                     raise ApiError(400, "missing_fields", "conversation_id and message are required")
                 data = send_message(owner_user_id, conversation_id, message, agent_name)
+                json_response(self, 200, {"success": True, "data": data})
+                return
+
+            if self.path == "/api/agent/list-market":
+                require_scope(agent_row, "market")
+                limit = int(payload.get("limit") or 20)
+                data = list_market_for_agent(owner_user_id, limit)
+                json_response(self, 200, {"success": True, "data": data})
+                return
+
+            if self.path == "/api/agent/submit-interest":
+                require_scope(agent_row, "interests")
+                project_id = payload.get("project_id")
+                message = payload.get("message")
+                contact = payload.get("contact")
+                if not project_id or not message:
+                    raise ApiError(400, "missing_fields", "project_id and message are required")
+                data = submit_interest_for_agent(owner_user_id, project_id, message, contact)
                 json_response(self, 200, {"success": True, "data": data})
                 return
 
