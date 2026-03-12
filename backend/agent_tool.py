@@ -5,6 +5,7 @@ import json
 
 SUPABASE_URL = "https://xjljjxogsxumcnjyetwy.supabase.co"
 ANON_KEY = "sb_publishable_dlgv32Zav_IaU_l6LVYu0A_CIz-Ww_u"
+AGENT_API_BASE = "http://127.0.0.1:8790/api/agent"
 
 
 def get_headers(token):
@@ -156,7 +157,28 @@ def start_conversation(token, project_id, interest_id, receiver_user_id):
     return res.json()
 
 
-def send_message(token, conversation_id, message, agent_name=None):
+def post_agent_api(agent_key, path, payload=None):
+    url = f"{AGENT_API_BASE}/{path.lstrip('/')}"
+    headers = {
+        "Authorization": f"Bearer {agent_key}",
+        "Content-Type": "application/json",
+    }
+    res = requests.post(url, headers=headers, json=payload or {}, timeout=30)
+    res.raise_for_status()
+    data = res.json()
+    return data.get("data", data)
+
+
+def send_message(token, conversation_id, message, agent_name=None, agent_key=None):
+    if agent_key:
+        data = post_agent_api(agent_key, "send-message", {
+            "conversation_id": conversation_id,
+            "message": message,
+            "agent_name": agent_name,
+        })
+        print(f"✅ Success! Sent message to Conversation {conversation_id} via agent API.")
+        return data
+
     user = get_current_user(token)
     payload = {
         "conversation_id": conversation_id,
@@ -171,7 +193,10 @@ def send_message(token, conversation_id, message, agent_name=None):
     return res.json()
 
 
-def list_conversations(token):
+def list_conversations(token=None, agent_key=None):
+    if agent_key:
+        return post_agent_api(agent_key, "list-conversations")
+
     url = (
         f"{SUPABASE_URL}/rest/v1/conversations"
         "?select=id,project_id,interest_id,initiator_user_id,receiver_user_id,status,summary_for_owner,recommended_next_step,last_agent_decision,created_at,updated_at,project:projects(project_name)"
@@ -201,7 +226,10 @@ def update_conversation_state(token, conversation_id, status=None, summary_for_o
     return res.json()
 
 
-def list_messages(token, conversation_id):
+def list_messages(token=None, conversation_id=None, agent_key=None):
+    if agent_key:
+        return post_agent_api(agent_key, "list-messages", {"conversation_id": conversation_id})
+
     url = (
         f"{SUPABASE_URL}/rest/v1/conversation_messages"
         f"?conversation_id=eq.{conversation_id}&select=id,conversation_id,sender_user_id,sender_agent_name,message,created_at&order=created_at.asc"
@@ -235,7 +263,8 @@ def main():
         ],
         help="Action to perform"
     )
-    parser.add_argument("--token", required=True, help="Human's ClawMatch API Key (JWT)")
+    parser.add_argument("--token", help="Human's ClawMatch API Key (JWT)")
+    parser.add_argument("--agent-key", help="Long-lived ClawMatch agent API key")
     parser.add_argument("--id", help="Project ID")
     parser.add_argument("--name", help="Project name (used by create)")
     parser.add_argument("--summary", help="Public Billboard summary")
@@ -258,6 +287,14 @@ def main():
     parser.add_argument("--last-agent-decision", help="Latest internal/public decision label")
 
     args = parser.parse_args()
+
+    agent_key_actions = {"list-conversations", "list-messages", "send-message"}
+    if args.action in agent_key_actions:
+        if not args.agent_key and not args.token:
+            raise ValueError(f"{args.action} requires either --agent-key or --token")
+    else:
+        if not args.token:
+            raise ValueError(f"{args.action} currently requires --token")
 
     try:
         if args.action == "update":
@@ -297,13 +334,13 @@ def main():
         elif args.action == "send-message":
             if not args.conversation_id or not args.message:
                 raise ValueError("--conversation-id and --message are required for send-message")
-            pretty_print(send_message(args.token, args.conversation_id, args.message, args.agent_name))
+            pretty_print(send_message(args.token, args.conversation_id, args.message, args.agent_name, agent_key=args.agent_key))
         elif args.action == "list-conversations":
-            pretty_print(list_conversations(args.token))
+            pretty_print(list_conversations(args.token, agent_key=args.agent_key))
         elif args.action == "list-messages":
             if not args.conversation_id:
                 raise ValueError("--conversation-id is required for list-messages")
-            pretty_print(list_messages(args.token, args.conversation_id))
+            pretty_print(list_messages(args.token, args.conversation_id, agent_key=args.agent_key))
         elif args.action == "update-conversation":
             if not args.conversation_id:
                 raise ValueError("--conversation-id is required for update-conversation")
