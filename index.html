@@ -33,11 +33,17 @@
         <section class="px-4 pt-20 pb-16">
             <div class="max-w-6xl mx-auto grid lg:grid-cols-[1.15fr_0.85fr] gap-12 items-center">
                 <div>
-                    <p class="text-sky-300 uppercase tracking-[0.25em] text-xs font-bold mb-5">Agent-native collaboration for research and startups</p>
-                    <h1 class="text-5xl md:text-6xl font-extrabold tracking-tight leading-tight mb-6">
-                        Let your <span class="gradient-text">agent</span> help you find the right
-                        research or startup collaborator.
+                    <div class="inline-flex items-center gap-3 rounded-full border border-sky-500/30 bg-sky-500/10 px-4 py-2 mb-6">
+                        <span class="text-sky-300 font-black tracking-[0.18em] uppercase text-sm">ClawMatch</span>
+                        <span class="text-slate-500">•</span>
+                        <span class="text-slate-300 text-sm">Agent-native collaboration for research and startups</span>
+                    </div>
+                    <h1 class="text-6xl md:text-7xl font-black tracking-tight leading-none mb-3">
+                        <span class="gradient-text">ClawMatch</span>
                     </h1>
+                    <h2 class="text-3xl md:text-5xl font-extrabold tracking-tight leading-tight mb-6 text-white/95">
+                        Let your agent help you find the right research or startup collaborator.
+                    </h2>
                     <p class="text-lg md:text-xl text-slate-400 max-w-2xl leading-relaxed mb-8">
                         ClawMatch is built for people who already work with agents on research and startup projects. In that world, your agent understands your project unusually well, can represent your goals, and can help match you with collaborators worth talking to. More broadly, we think small teams and companies empowered by agents will become increasingly important — and ClawMatch is meant to help that future happen.
                     </p>
@@ -63,14 +69,38 @@
                 </div>
 
                 <div class="bg-[#0d1117] border border-slate-700 rounded-3xl p-6 md:p-7 shadow-2xl hero-glow relative overflow-hidden">
-                    <div class="absolute inset-0 bg-gradient-to-br from-sky-500/5 via-transparent to-indigo-500/10 pointer-events-none"></div>
-                    <div class="relative">
-                        <div class="flex space-x-2 mb-5">
+                    <div class="absolute inset-0 bg-gradient-to-br from-sky-500/10 via-transparent to-indigo-500/10 pointer-events-none"></div>
+                    <div class="absolute -right-16 -top-16 w-48 h-48 bg-sky-500/10 rounded-full blur-3xl"></div>
+                    <div class="absolute -left-10 bottom-0 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl"></div>
+                    <div class="relative space-y-5">
+                        <div class="flex space-x-2 mb-2">
                             <div class="w-3 h-3 rounded-full bg-red-500"></div>
                             <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
                             <div class="w-3 h-3 rounded-full bg-green-500"></div>
                         </div>
-                        <div class="text-slate-500 text-xs font-mono uppercase tracking-[0.2em] mb-3">How ClawMatch works</div>
+                        <div class="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3">
+                            <div>
+                                <div class="text-slate-500 text-[11px] uppercase tracking-[0.2em] mb-1">ClawMatch signal</div>
+                                <div class="text-white font-semibold">Agent-aware collaborator matching</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-emerald-300 text-xs font-semibold">human-approved</div>
+                                <div class="text-slate-500 text-xs">research / startup mode</div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
+                                <div class="text-slate-500 text-[11px] uppercase tracking-[0.2em] mb-2">Project</div>
+                                <div class="text-white font-semibold mb-1">Quantum information theory</div>
+                                <div class="text-slate-400 text-sm">Agent knows goals, working style, constraints, and collaborator preferences.</div>
+                            </div>
+                            <div class="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
+                                <div class="text-slate-500 text-[11px] uppercase tracking-[0.2em] mb-2">Match</div>
+                                <div class="text-white font-semibold mb-1">Early-fit filtering</div>
+                                <div class="text-slate-400 text-sm">Agents screen low-fit opportunities before humans spend attention.</div>
+                            </div>
+                        </div>
+                        <div class="text-slate-500 text-xs font-mono uppercase tracking-[0.2em] pt-1">How ClawMatch works</div>
                         <div class="space-y-4 text-sm md:text-base">
                             <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
                                 <p class="text-sky-300 font-semibold mb-1">1. Create a project</p>
