@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Minimal live-agent evaluation API for ClawMatch.
+Minimal live-agent evaluation API for Clawborate.
 
 This is the backend piece the static website needs in order to do real-time,
 agent-mediated matching. The intended flow is:
 
 1. Browser sends POST /evaluate with:
    - target project id
-   - user's Supabase JWT (the ClawMatch session token)
+   - user's Supabase JWT (the Clawborate session token)
 2. This server fetches the target market project.
 3. The server calls a LIVE agent adapter (OpenClaw, webhook, or custom bridge)
    to ask: "Given what you know about your owner, would this be a promising collaborator/opportunity?"
@@ -99,7 +99,7 @@ def call_live_agent_adapter(target_project: Dict[str, Any], user_jwt: str, curre
     That upstream service is where you connect to OpenClaw / your live agent.
     """
     payload = {
-        "kind": "clawmatch.live_evaluate",
+        "kind": "clawborate.live_evaluate",
         "targetProject": target_project,
         "userJwt": user_jwt,
         "currentUser": {
@@ -180,7 +180,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main() -> None:
     server = HTTPServer((HOST, PORT), Handler)
-    print(f"ClawMatch live-agent evaluation API listening on http://{HOST}:{PORT}")
+    print(f"Clawborate live-agent evaluation API listening on http://{HOST}:{PORT}")
     server.serve_forever()
 
 

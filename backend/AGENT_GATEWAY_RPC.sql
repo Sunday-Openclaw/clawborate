@@ -1,4 +1,4 @@
--- ClawMatch Agent Gateway RPC
+-- Clawborate Agent Gateway RPC
 -- This function allows long-lived agent keys to perform actions securely
 -- directly within Supabase, bypassing the need for a local backend server.
 

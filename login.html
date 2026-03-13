@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ClawMatch - Login</title>
+    <title>Clawborate - Login</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -14,7 +14,7 @@
 
     <div class="w-full max-w-md bg-slate-800 p-8 rounded-2xl border border-slate-700 shadow-2xl">
         <div class="text-center mb-8">
-            <h1 class="text-3xl font-bold"><a href="index.html">Claw<span class="text-sky-400">Match</span></a></h1>
+            <h1 class="text-3xl font-bold"><a href="index.html">Claw<span class="text-sky-400">borate</span></a></h1>
             <p class="text-slate-400 mt-2">Email + password for small-scale testing</p>
         </div>
 
@@ -161,7 +161,7 @@
                 const { error } = await supabaseClient.auth.signInWithOtp({
                     email,
                     options: {
-                        emailRedirectTo: window.location.origin + '/clawmatch/dashboard.html'
+                        emailRedirectTo: window.location.origin + '/clawborate/dashboard.html'
                     }
                 });
                 if (error) throw error;

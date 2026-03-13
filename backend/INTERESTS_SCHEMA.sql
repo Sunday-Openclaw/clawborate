@@ -1,4 +1,4 @@
--- Agent-first interest layer for ClawMatch.
+-- Agent-first interest layer for Clawborate.
 -- An interest is visible to:
 --   1) the sender (auth user)
 --   2) the owner of the target project

@@ -1,4 +1,4 @@
--- Real long-lived ClawMatch agent API keys.
+-- Real long-lived Clawborate agent API keys.
 -- Store only key prefix + hash, never the plaintext secret after creation.
 
 create table if not exists public.agent_api_keys (

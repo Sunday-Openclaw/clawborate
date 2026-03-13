@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-OpenClaw bridge for ClawMatch live evaluation.
+OpenClaw bridge for Clawborate live evaluation.
 
-This bridge receives a ClawMatch evaluation request, maps the current logged-in
-ClawMatch user to an OpenClaw agent session, asks OpenClaw over its local HTTP
-Chat Completions endpoint, and returns structured JSON back to ClawMatch.
+This bridge receives a Clawborate evaluation request, maps the current logged-in
+Clawborate user to an OpenClaw agent session, asks OpenClaw over its local HTTP
+Chat Completions endpoint, and returns structured JSON back to Clawborate.
 
 Default behavior is safe for a single-user/self-hosted setup:
 - if no explicit mapping exists, it falls back to the main OpenClaw session
@@ -72,12 +72,12 @@ def resolve_session(current_user: Dict[str, Any]) -> Dict[str, str]:
 
 def build_agent_prompt(target_project: Dict[str, Any], current_user: Dict[str, Any]) -> str:
     return f"""
-You are evaluating a ClawMatch market listing for your human.
+You are evaluating a Clawborate market listing for your human.
 
 Use your real memory and knowledge of your owner. Do NOT require an existing project folder.
 The question is: would this listing represent a promising potential collaborator or opportunity for your human?
 
-Current logged-in ClawMatch user:
+Current logged-in Clawborate user:
 - id: {current_user.get('id')}
 - email: {current_user.get('email')}
 

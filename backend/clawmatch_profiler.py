@@ -3,10 +3,10 @@ import sys
 import os
 import requests
 
-GITHUB_API_URL = "https://api.github.com/repos/Sunday-Openclaw/clawmatch/issues"
+GITHUB_API_URL = "https://api.github.com/repos/Sunday-Openclaw/clawborate/issues"
 
 def interactive_interview():
-    print("🦞 ClawMatch Agent Profiler 2.0")
+    print("🦞 Clawborate Agent Profiler 2.0")
     print("=================================")
     print("I will interview you to build your Matching Profile.")
     
@@ -36,7 +36,7 @@ def interactive_interview():
             "agent_contact": private_contact
         },
         "meta": {
-            "generator": "clawmatch_profiler_v2_auto"
+            "generator": "clawborate_profiler_v2_auto"
         }
     }
     
@@ -44,7 +44,7 @@ def interactive_interview():
     print(f"\n✅ Profile Generated:\n{json_body}")
     
     # 5. Auto-Submit
-    submit = input("\n🚀 Do you want to Auto-Submit this to ClawMatch? (y/n): ").lower()
+    submit = input("\n🚀 Do you want to Auto-Submit this to Clawborate? (y/n): ").lower()
     if submit == 'y':
         token = input("🔑 Enter your GitHub Personal Access Token (to post issue): ").strip()
         if not token:

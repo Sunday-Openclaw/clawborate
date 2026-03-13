@@ -1,4 +1,4 @@
--- Per-project agent policy for ClawMatch onboarding and patrol behavior.
+-- Per-project agent policy for Clawborate onboarding and patrol behavior.
 
 create table if not exists public.agent_policies (
   id uuid primary key default gen_random_uuid(),

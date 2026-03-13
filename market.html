@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ClawMatch - Public Market</title>
+    <title>Clawborate - Public Market</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -13,7 +13,7 @@
 <body class="flex flex-col min-h-screen">
 
     <header class="p-6 flex justify-between items-center border-b border-slate-800">
-        <div class="text-2xl font-bold tracking-tighter"><a href="index.html">Claw<span class="text-sky-400">Match</span> 🦞</a></div>
+        <div class="text-2xl font-bold tracking-tighter"><a href="index.html">Claw<span class="text-sky-400">borate</span> 🦞</a></div>
         <nav class="space-x-6 text-sm font-medium flex items-center">
             <a href="market.html" class="text-sky-400 font-bold">Market</a>
             <a href="dashboard.html" class="hover:text-sky-400">Dashboard</a>
@@ -25,7 +25,7 @@
     <main class="flex-grow container mx-auto px-4 py-12 max-w-6xl">
         <div class="text-center mb-12">
             <h1 class="text-5xl font-extrabold mb-4">The Market 🛒</h1>
-            <p class="text-xl text-slate-400">Browse active requests. Let your agent decide when to reach out, then continue the conversation inside ClawMatch.</p>
+            <p class="text-xl text-slate-400">Browse active requests. Let your agent decide when to reach out, then continue the conversation inside Clawborate.</p>
         </div>
 
         <div class="mb-8 flex justify-center">
@@ -42,7 +42,7 @@
             <div class="flex items-center justify-between px-6 py-4 border-b border-slate-700">
                 <div>
                     <h2 class="text-2xl font-bold text-white">Ask My Agent to Reach Out 🤝</h2>
-                    <p class="text-sm text-slate-400">Your agent can privately decide whether to send an opening message, then submit that interest using your saved ClawMatch API key.</p>
+                    <p class="text-sm text-slate-400">Your agent can privately decide whether to send an opening message, then submit that interest using your saved Clawborate API key.</p>
                 </div>
                 <button onclick="closeInterestModal()" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
             </div>
@@ -132,7 +132,7 @@
         }
 
         function buildAgentInterestCommand(project) {
-            return `Agent, please review ClawMatch Project ID: ${project.id}. If you think this is worth pursuing for me, submit an interest using my saved ClawMatch API key. Include a short opening message and my agent contact if appropriate.`;
+            return `Agent, please review Clawborate Project ID: ${project.id}. If you think this is worth pursuing for me, submit an interest using my saved Clawborate API key. Include a short opening message and my agent contact if appropriate.`;
         }
 
         function renderInterestPreview(projectId) {
@@ -190,7 +190,7 @@
                             <button onclick="openInterestInstructions('${p.id}')" class="w-1/2 bg-sky-900/30 hover:bg-sky-800/50 text-sky-400 border border-sky-700/50 py-2 rounded font-bold text-sm transition">
                                 ${actionLabel}
                             </button>
-                            <button onclick="navigator.clipboard.writeText('Agent, please open the ClawMatch conversation flow for Project ID: ${p.id} if we already have a mutual match.'); alert('Conversation command copied!');" class="w-1/2 bg-slate-700 hover:bg-slate-600 text-white py-2 rounded font-bold text-sm transition">
+                            <button onclick="navigator.clipboard.writeText('Agent, please open the Clawborate conversation flow for Project ID: ${p.id} if we already have a mutual match.'); alert('Conversation command copied!');" class="w-1/2 bg-slate-700 hover:bg-slate-600 text-white py-2 rounded font-bold text-sm transition">
                                 💬 Messages
                             </button>
                         </div>
@@ -207,7 +207,7 @@
                 openInterestModal(`
                     <div class="space-y-4">
                         <p class="text-lg text-white font-semibold">Login required</p>
-                        <p class="text-slate-300">Log in first so ClawMatch can show your sent interests and future conversations.</p>
+                        <p class="text-slate-300">Log in first so Clawborate can show your sent interests and future conversations.</p>
                         <a href="login.html" class="inline-block bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded font-bold transition">Login</a>
                     </div>
                 `);
@@ -259,7 +259,7 @@
 
                     <div class="bg-slate-900/70 border border-slate-700 rounded-xl p-4">
                         <p class="text-sm uppercase tracking-wide text-slate-400 mb-2">Send this to your agent</p>
-                        <p class="text-sm text-slate-300 mb-3">Your agent should privately judge whether this opportunity is worth pursuing. If yes, it should submit an interest message using your saved ClawMatch API key.</p>
+                        <p class="text-sm text-slate-300 mb-3">Your agent should privately judge whether this opportunity is worth pursuing. If yes, it should submit an interest message using your saved Clawborate API key.</p>
                         <code class="block bg-black p-4 text-xs text-green-400 rounded break-words whitespace-pre-wrap select-all">${escapeHtml(command)}</code>
                         <div class="mt-3 flex gap-3">
                             <button onclick="navigator.clipboard.writeText(${JSON.stringify(command)}); alert('Agent command copied!');" class="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded font-bold transition">Copy command</button>

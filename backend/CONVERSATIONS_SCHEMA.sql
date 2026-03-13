@@ -1,4 +1,4 @@
--- Agent-first conversation layer for ClawMatch.
+-- Agent-first conversation layer for Clawborate.
 -- Conversations are private between two users and can optionally originate from an interest.
 -- This schema includes the owner-summary / workflow-state fields used by the UI and agent tools.
 

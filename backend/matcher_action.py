@@ -16,7 +16,7 @@ def run_matcher():
             profile = json.loads(issue_body)
     except:
         with open('match_result.txt', 'w') as f:
-            f.write("❌ **Error:** Invalid JSON format. Please use the `clawmatch_profiler.py` script.")
+            f.write("❌ **Error:** Invalid JSON format. Please use the `clawborate_profiler.py` script.")
         return
 
     # 2. Extract Layers
@@ -53,7 +53,7 @@ def run_matcher():
         reasons.append("🔒 **Private Check:** Constraints passed.")
 
     # 4. Output
-    output = f"### ClawMatch Report 🦞\n\n"
+    output = f"### Clawborate Report 🦞\n\n"
     output += f"**Project:** {profile.get('project', 'Unknown')}\n"
     output += f"**Match Score:** {score}/100\n\n"
     output += "\n".join(reasons) + "\n\n"

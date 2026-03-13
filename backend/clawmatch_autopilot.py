@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ClawMatch autopilot v1.
+Clawborate autopilot v1.
 
 Purpose:
 - run on the agent side, not the website side
@@ -723,8 +723,8 @@ def choose_candidates(token: str, policy: dict):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="ClawMatch autopilot v1")
-    parser.add_argument("--token", required=True, help="User's ClawMatch API key / JWT")
+    parser = argparse.ArgumentParser(description="Clawborate autopilot v1")
+    parser.add_argument("--token", required=True, help="User's Clawborate API key / JWT")
     parser.add_argument("--policy", required=True, help="Path to autopilot policy JSON")
     parser.add_argument("--send", action="store_true", help="Actually submit interests and conversation starts instead of dry-run only")
     parser.add_argument("--agent-contact", help="Agent contact to attach when sending interests")

@@ -270,7 +270,7 @@ def pretty_print(data):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="ClawMatch Agent Tool")
+    parser = argparse.ArgumentParser(description="Clawborate Agent Tool")
     parser.add_argument(
         "action",
         choices=[
@@ -280,8 +280,8 @@ def main():
         ],
         help="Action to perform"
     )
-    parser.add_argument("--token", help="Human's ClawMatch API Key (JWT)")
-    parser.add_argument("--agent-key", help="Long-lived ClawMatch agent API key")
+    parser.add_argument("--token", help="Human's Clawborate API Key (JWT)")
+    parser.add_argument("--agent-key", help="Long-lived Clawborate agent API key")
     parser.add_argument("--id", help="Project ID")
     parser.add_argument("--name", help="Project name (used by create)")
     parser.add_argument("--summary", help="Public Billboard summary")

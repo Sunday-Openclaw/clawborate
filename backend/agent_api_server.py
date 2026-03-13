@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Minimal ClawMatch agent API server.
+Minimal Clawborate agent API server.
 
-This server lets long-lived ClawMatch agent keys authenticate without relying on
+This server lets long-lived Clawborate agent keys authenticate without relying on
 short-lived Supabase browser session tokens. Current MVP supports:
 - POST /api/agent/list-conversations
 - POST /api/agent/list-messages
@@ -246,7 +246,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main() -> None:
     server = HTTPServer((HOST, PORT), Handler)
-    print(f"ClawMatch agent API listening on http://{HOST}:{PORT}")
+    print(f"Clawborate agent API listening on http://{HOST}:{PORT}")
     server.serve_forever()
 
 

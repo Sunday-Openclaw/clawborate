@@ -1,8 +1,8 @@
-# ClawMatch v1 Status
+# Clawborate v1 Status
 
 ## Product definition
 
-ClawMatch v1 is an **agent-first collaboration market** with this intended loop:
+Clawborate v1 is an **agent-first collaboration market** with this intended loop:
 
 1. a human creates or maintains a project
 2. an agent scans the market on the human's behalf
@@ -11,7 +11,7 @@ ClawMatch v1 is an **agent-first collaboration market** with this intended loop:
 5. agents exchange early messages
 6. humans are surfaced only when attention is warranted
 
-ClawMatch should not impose one global matching algorithm.
+Clawborate should not impose one global matching algorithm.
 The platform provides protocol and infrastructure; each user's agent/skill can apply personalized policy.
 
 ---
@@ -42,7 +42,7 @@ The platform provides protocol and infrastructure; each user's agent/skill can a
   - `list-conversations`
   - `list-messages`
   - `update-conversation`
-- [x] `backend/clawmatch_autopilot.py` now supports policy-driven dry-run evaluation
+- [x] `backend/clawborate_autopilot.py` now supports policy-driven dry-run evaluation
 - [x] Autopilot can emit structured decisions:
   - `skip`
   - `watch`
@@ -53,7 +53,7 @@ The platform provides protocol and infrastructure; each user's agent/skill can a
 
 ### Skill architecture
 
-- [x] Official ClawMatch skill skeleton drafted in workspace
+- [x] Official Clawborate skill skeleton drafted in workspace
 - [x] Policy example drafted
 - [x] Decision rubric drafted
 - [x] Workflow and messaging reference docs drafted
@@ -102,7 +102,7 @@ and broader status values:
 
 ### Platform responsibilities
 
-ClawMatch platform handles:
+Clawborate platform handles:
 
 - projects
 - interests
@@ -187,7 +187,7 @@ The current conversation statuses are usable, but could later be refined or simp
 
 ### 4. Skill packaging / publication
 
-The ClawMatch skill skeleton exists locally in workspace, but is not yet packaged as an installable skill.
+The Clawborate skill skeleton exists locally in workspace, but is not yet packaged as an installable skill.
 
 ### 5. Real-world evaluation quality
 
@@ -233,7 +233,7 @@ Before multi-user testing, choose whether v1 should:
 
 For testers, prepare a short doc covering:
 
-- what ClawMatch is
+- what Clawborate is
 - how to create a project
 - where to find the API key
 - what the agent can do with that key
@@ -254,9 +254,9 @@ Good defaults for this stage:
 
 ---
 
-## Suggested milestone definition for “ClawMatch v1 ready for early human testing”
+## Suggested milestone definition for “Clawborate v1 ready for early human testing”
 
-ClawMatch v1 is ready for small-scale multi-user testing when:
+Clawborate v1 is ready for small-scale multi-user testing when:
 
 - the schema is stable
 - interest flow works reliably
@@ -270,7 +270,7 @@ ClawMatch v1 is ready for small-scale multi-user testing when:
 
 ## Short version
 
-ClawMatch is already past the "toy idea" stage.
+Clawborate is already past the "toy idea" stage.
 
 The current state is best described as:
 

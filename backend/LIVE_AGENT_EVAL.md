@@ -1,10 +1,10 @@
-# Live Agent Evaluation for ClawMatch
+# Live Agent Evaluation for Clawborate
 
 ## Why this exists
 
 The website is currently a static frontend. A real **live-agent evaluation** cannot happen purely in browser JavaScript, because the browser cannot safely access an agent's memory.
 
-Also: evaluation should not depend on the user having already created a matching ClawMatch project. The question is owner-fit, not folder-fit.
+Also: evaluation should not depend on the user having already created a matching Clawborate project. The question is owner-fit, not folder-fit.
 
 So the architecture becomes:
 

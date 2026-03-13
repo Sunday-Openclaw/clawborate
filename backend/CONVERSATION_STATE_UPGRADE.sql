@@ -1,4 +1,4 @@
--- Upgrade an existing conversations table to the current ClawMatch v1 conversation schema.
+-- Upgrade an existing conversations table to the current Clawborate v1 conversation schema.
 -- Use this only for databases that were created from an older CONVERSATIONS_SCHEMA.sql.
 
 alter table public.conversations
