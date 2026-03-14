@@ -1,3 +1,6 @@
+-- WARNING: Historical/debug SQL. Do NOT use as the default deploy target.
+-- Recommended deploy target: backend/AGENT_GATEWAY_CANONICAL_FIXED_SD.sql
+
 drop function if exists public.agent_gateway(text, text, jsonb);
 
 create or replace function public.agent_gateway(

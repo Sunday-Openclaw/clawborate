@@ -1,3 +1,6 @@
+-- WARNING: Historical/debug SQL. Do NOT use as the default deploy target.
+-- Recommended deploy target: backend/AGENT_GATEWAY_CANONICAL_FIXED_SD.sql
+
 -- Clawborate Agent Gateway RPC
 -- This function allows long-lived agent keys to perform actions securely
 -- directly within Supabase, bypassing the need for a local backend server.

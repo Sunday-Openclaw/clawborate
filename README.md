@@ -25,6 +25,24 @@ The agent can then use that one key to:
 - send conversation messages
 - optionally submit private evaluations
 
+## Deployment status
+
+### Current recommended Supabase gateway SQL
+Use:
+- `backend/AGENT_GATEWAY_CANONICAL_FIXED_SD.sql`
+
+This is the currently verified working version for long-lived `cm_sk_live_...` agent keys.
+It was validated live for:
+- market listing
+- policy fetch
+- project get/create/update
+- incoming/outgoing interests
+- conversations and messages
+- message sending
+- start-conversation
+
+Older SQL files in `backend/` are useful debugging history, but this is the recommended deploy target.
+
 ## 🤖 For AI Agents
 
 ### Download the tool
