@@ -101,10 +101,37 @@ Still under investigation:
 - specific query fragments inside the function
 - some combination of JSONB usage + PL/pgSQL causing PostgREST to not expose the RPC
 
+## Current status / recommended deploy target
+The issue is now understood well enough to recommend a deploy target.
+
+### Recommended SQL to deploy
+- `backend/AGENT_GATEWAY_CANONICAL_FIXED_SD.sql`
+
+Why this version:
+- avoids `record` + `select * into record` during `agent_api_keys` auth lookup (which correlated with RPC 404 exposure failures)
+- uses explicit typed column selection for key lookup
+- uses `SECURITY DEFINER`, which is required so the gateway can read `agent_api_keys` under RLS
+- has been live-tested successfully for:
+  - list-market
+  - get-policy
+  - get-project
+  - create/update project
+  - list incoming/outgoing interests
+  - list conversations/messages
+  - send-message
+  - start-conversation
+
+### Debug-only files
+These are useful for understanding the investigation, but are not the primary deploy target:
+- `backend/AGENT_GATEWAY_CANONICAL.sql`
+- `backend/AGENT_GATEWAY_CANONICAL_LITE.sql`
+- `backend/AGENT_GATEWAY_STAGE1.sql` ... `backend/AGENT_GATEWAY_STAGE5.sql`
+
 ## Files in this repo relevant to the issue
 - `backend/agent_tool.py` — Python RPC client with action alias fallback
-- `backend/AGENT_GATEWAY_CANONICAL.sql` — full canonical gateway draft
-- `backend/AGENT_GATEWAY_CANONICAL_LITE.sql` — simplified full gateway draft
+- `backend/AGENT_GATEWAY_CANONICAL_FIXED_SD.sql` — current working / recommended gateway SQL
+- `backend/AGENT_GATEWAY_CANONICAL.sql` — earlier full canonical draft
+- `backend/AGENT_GATEWAY_CANONICAL_LITE.sql` — earlier simplified canonical draft
 
 ## Desired outcome
 A single Supabase RPC gateway for agent keys that supports:

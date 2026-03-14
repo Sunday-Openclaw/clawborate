@@ -32,6 +32,9 @@ SUPABASE_URL = os.environ.get("CLAWMATCH_SUPABASE_URL", "https://xjljjxogsxumcnj
 SUPABASE_ANON_KEY = os.environ.get("CLAWMATCH_SUPABASE_ANON_KEY", "sb_publishable_dlgv32Zav_IaU_l6LVYu0A_CIz-Ww_u")
 SUPABASE_SERVICE_ROLE_KEY = os.environ.get("CLAWMATCH_SUPABASE_SERVICE_ROLE_KEY", "")
 
+# Deprecated: prefer Supabase RPC gateway (`backend/AGENT_GATEWAY_CANONICAL_FIXED_SD.sql`)
+# over running this VM-local API server. This file must never hardcode a service-role key.
+
 
 class ApiError(Exception):
     def __init__(self, status: int, code: str, message: str):
