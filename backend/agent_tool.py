@@ -5,6 +5,24 @@ import json
 
 SUPABASE_URL = "https://xjljjxogsxumcnjyetwy.supabase.co"
 ANON_KEY = "sb_publishable_dlgv32Zav_IaU_l6LVYu0A_CIz-Ww_u"
+RPC_URL = f"{SUPABASE_URL}/rest/v1/rpc/agent_gateway"
+
+
+RPC_ACTION_ALIASES = {
+    "get_project": ["get_project", "get-project"],
+    "create_project": ["create_project", "create"],
+    "update_project": ["update_project", "update"],
+    "list_market": ["list_market"],
+    "get_policy": ["get_policy", "get-policy"],
+    "submit_interest": ["submit_interest"],
+    "list_incoming_interests": ["list_incoming_interests"],
+    "list_outgoing_interests": ["list_outgoing_interests"],
+    "start_conversation": ["start_conversation"],
+    "update_conversation": ["update_conversation"],
+    "list_conversations": ["list_conversations"],
+    "list_messages": ["list_messages"],
+    "send_message": ["send_message"],
+}
 
 
 def get_headers(token):
@@ -16,7 +34,50 @@ def get_headers(token):
     }
 
 
-def update_project(token, project_id, summary, constraints, tags, contact):
+def post_agent_api(agent_key, action, payload=None):
+    headers = {
+        "apikey": ANON_KEY,
+        "Authorization": f"Bearer {ANON_KEY}",
+        "Content-Type": "application/json",
+    }
+    attempted = []
+    last_error = None
+    for candidate in RPC_ACTION_ALIASES.get(action, [action]):
+        attempted.append(candidate)
+        rpc_payload = {
+            "p_agent_key": agent_key,
+            "p_action": candidate,
+            "p_payload": payload or {}
+        }
+        res = requests.post(RPC_URL, headers=headers, json=rpc_payload, timeout=30)
+        res.raise_for_status()
+        data = res.json()
+        if isinstance(data, dict) and data.get("error"):
+            last_error = data
+            if data.get("error") == "unknown_action":
+                continue
+            raise ValueError(f"RPC Error: {data['error']} - {data.get('message', '')}")
+        return data.get("data", data)
+    if last_error:
+        raise ValueError(
+            f"RPC Error after trying actions {attempted}: {last_error.get('error')} - {last_error.get('message', '')}"
+        )
+    raise ValueError(f"RPC failed for action {action}; attempted {attempted}")
+
+
+def update_project(token, project_id, summary, constraints, tags, contact, agent_key=None):
+    if agent_key:
+        payload = {"project_id": project_id}
+        if summary is not None:
+            payload["public_summary"] = summary
+        if constraints is not None:
+            payload["private_constraints"] = constraints
+        if tags is not None:
+            payload["tags"] = tags
+        if contact is not None:
+            payload["agent_contact"] = contact
+        return post_agent_api(agent_key, "update_project", payload)
+
     url = f"{SUPABASE_URL}/rest/v1/projects?id=eq.{project_id}"
     payload = {
         "public_summary": summary,
@@ -30,16 +91,19 @@ def update_project(token, project_id, summary, constraints, tags, contact):
     return res.json()
 
 
-def create_project(token, name, summary, constraints, tags, contact):
-    user = get_current_user(token)
+def create_project(token, name, summary, constraints, tags, contact, agent_key=None):
     payload = {
-        "user_id": user["id"],
         "project_name": name,
         "public_summary": summary,
         "private_constraints": constraints,
         "tags": tags,
         "agent_contact": contact,
     }
+    if agent_key:
+        return post_agent_api(agent_key, "create_project", payload)
+
+    user = get_current_user(token)
+    payload["user_id"] = user["id"]
     url = f"{SUPABASE_URL}/rest/v1/projects"
     res = requests.post(url, headers=get_headers(token), json=payload, timeout=30)
     res.raise_for_status()
@@ -49,8 +113,10 @@ def create_project(token, name, summary, constraints, tags, contact):
     return data
 
 
-def fetch_project(token, project_id):
-    url = f"{SUPABASE_URL}/rest/v1/projects?id=eq.{project_id}&select=id,user_id,project_name,public_summary,tags,agent_contact,created_at"
+def fetch_project(token, project_id, agent_key=None):
+    if agent_key:
+        return post_agent_api(agent_key, "get_project", {"project_id": project_id})
+    url = f"{SUPABASE_URL}/rest/v1/projects?id=eq.{project_id}&select=id,user_id,project_name,public_summary,tags,agent_contact,private_constraints,created_at"
     res = requests.get(url, headers=get_headers(token), timeout=30)
     res.raise_for_status()
     data = res.json()
@@ -96,6 +162,7 @@ def submit_interest(token, project_id, message, contact=None, agent_key=None):
         data = post_agent_api(agent_key, "submit_interest", {
             "project_id": project_id,
             "message": message,
+            "agent_contact": contact,
             "contact": contact,
         })
         print(f"✅ Success! Submitted interest for Project {project_id} via agent gateway.")
@@ -112,7 +179,13 @@ def submit_interest(token, project_id, message, contact=None, agent_key=None):
     return res.json()
 
 
-def list_incoming_interests(token):
+def get_policy(agent_key):
+    return post_agent_api(agent_key, "get_policy")
+
+
+def list_incoming_interests(token=None, agent_key=None):
+    if agent_key:
+        return post_agent_api(agent_key, "list_incoming_interests")
     url = (
         f"{SUPABASE_URL}/rest/v1/interests"
         "?select=id,from_user_id,target_project_id,message,agent_contact,status,created_at,target:projects!interests_target_project_id_fkey(project_name,user_id)"
@@ -123,7 +196,9 @@ def list_incoming_interests(token):
     return res.json()
 
 
-def list_outgoing_interests(token):
+def list_outgoing_interests(token=None, agent_key=None):
+    if agent_key:
+        return post_agent_api(agent_key, "list_outgoing_interests")
     url = (
         f"{SUPABASE_URL}/rest/v1/interests"
         "?select=id,from_user_id,target_project_id,message,agent_contact,status,created_at,target:projects!interests_target_project_id_fkey(project_name,user_id)"
@@ -134,11 +209,17 @@ def list_outgoing_interests(token):
     return res.json()
 
 
-def start_conversation(token, project_id, interest_id, receiver_user_id):
+def start_conversation(token=None, project_id=None, interest_id=None, receiver_user_id=None, agent_key=None):
+    if agent_key:
+        return post_agent_api(agent_key, "start_conversation", {
+            "project_id": project_id,
+            "interest_id": interest_id,
+            "receiver_user_id": receiver_user_id,
+        })
+
     user = get_current_user(token)
     my_user_id = user["id"]
 
-    # Reuse an existing conversation for the same interest if one already exists.
     existing_url = (
         f"{SUPABASE_URL}/rest/v1/conversations"
         f"?interest_id=eq.{interest_id}"
@@ -158,32 +239,13 @@ def start_conversation(token, project_id, interest_id, receiver_user_id):
         "interest_id": interest_id,
         "initiator_user_id": my_user_id,
         "receiver_user_id": receiver_user_id,
+        "status": "conversation_started",
     }
     url = f"{SUPABASE_URL}/rest/v1/conversations"
     res = requests.post(url, headers=get_headers(token), json=payload, timeout=30)
     res.raise_for_status()
     print(f"✅ Success! Started conversation for Project {project_id}.")
     return res.json()
-
-
-def post_agent_api(agent_key, action, payload=None):
-    url = f"{SUPABASE_URL}/rest/v1/rpc/agent_gateway"
-    headers = {
-        "apikey": ANON_KEY,
-        "Authorization": f"Bearer {ANON_KEY}",
-        "Content-Type": "application/json",
-    }
-    rpc_payload = {
-        "p_agent_key": agent_key,
-        "p_action": action,
-        "p_payload": payload or {}
-    }
-    res = requests.post(url, headers=headers, json=rpc_payload, timeout=30)
-    res.raise_for_status()
-    data = res.json()
-    if isinstance(data, dict) and data.get("error"):
-        raise ValueError(f"RPC Error: {data['error']} - {data.get('message', '')}")
-    return data.get("data", data)
 
 
 def send_message(token, conversation_id, message, agent_name=None, agent_key=None):
@@ -224,8 +286,8 @@ def list_conversations(token=None, agent_key=None):
     return res.json()
 
 
-def update_conversation_state(token, conversation_id, status=None, summary_for_owner=None, recommended_next_step=None, last_agent_decision=None):
-    payload = {"updated_at": "now()"}
+def update_conversation(token=None, conversation_id=None, status=None, summary_for_owner=None, recommended_next_step=None, last_agent_decision=None, agent_key=None):
+    payload = {}
     if status is not None:
         payload["status"] = status
     if summary_for_owner is not None:
@@ -234,6 +296,12 @@ def update_conversation_state(token, conversation_id, status=None, summary_for_o
         payload["recommended_next_step"] = recommended_next_step
     if last_agent_decision is not None:
         payload["last_agent_decision"] = last_agent_decision
+
+    if agent_key:
+        payload["conversation_id"] = conversation_id
+        return post_agent_api(agent_key, "update_conversation", payload)
+
+    payload["updated_at"] = "now()"
     url = f"{SUPABASE_URL}/rest/v1/conversations?id=eq.{conversation_id}"
     headers = get_headers(token).copy()
     headers["Prefer"] = "return=representation"
@@ -276,7 +344,8 @@ def main():
         choices=[
             "update", "create", "evaluate", "get-project", "list-market",
             "submit-interest", "list-incoming-interests", "list-outgoing-interests",
-            "start-conversation", "send-message", "list-conversations", "list-messages", "update-conversation"
+            "start-conversation", "send-message", "list-conversations", "list-messages",
+            "update-conversation", "get-policy"
         ],
         help="Action to perform"
     )
@@ -305,7 +374,12 @@ def main():
 
     args = parser.parse_args()
 
-    agent_key_actions = {"list-conversations", "list-messages", "send-message", "list-market", "submit-interest"}
+    agent_key_actions = {
+        "list-conversations", "list-messages", "send-message", "list-market",
+        "submit-interest", "list-incoming-interests", "list-outgoing-interests",
+        "start-conversation", "update-conversation",
+        "get-project", "create", "update", "get-policy"
+    }
     if args.action in agent_key_actions:
         if not args.agent_key and not args.token:
             raise ValueError(f"{args.action} requires either --agent-key or --token")
@@ -317,15 +391,15 @@ def main():
         if args.action == "update":
             if not args.id:
                 raise ValueError("--id is required for update")
-            update_project(args.token, args.id, args.summary, args.constraints, args.tags, args.contact)
+            pretty_print(update_project(args.token, args.id, args.summary, args.constraints, args.tags, args.contact, agent_key=args.agent_key))
         elif args.action == "create":
             if not args.name:
                 raise ValueError("--name is required for create")
-            pretty_print(create_project(args.token, args.name, args.summary, args.constraints, args.tags, args.contact))
+            pretty_print(create_project(args.token, args.name, args.summary, args.constraints, args.tags, args.contact, agent_key=args.agent_key))
         elif args.action == "get-project":
             if not args.id:
                 raise ValueError("--id is required for get-project")
-            pretty_print(fetch_project(args.token, args.id))
+            pretty_print(fetch_project(args.token, args.id, agent_key=args.agent_key))
         elif args.action == "list-market":
             pretty_print(list_market(args.token, args.limit, agent_key=args.agent_key))
         elif args.action == "evaluate":
@@ -336,18 +410,32 @@ def main():
             if missing:
                 raise ValueError("Missing required arguments for evaluate: " + ", ".join(missing))
             evaluate_project(args.token, args.id, args.score, args.confidence, args.reason, args.should_connect == "true")
+        elif args.action == "get-policy":
+            pretty_print(get_policy(args.agent_key))
         elif args.action == "submit-interest":
             if not args.id or not args.message:
                 raise ValueError("--id and --message are required for submit-interest")
             pretty_print(submit_interest(args.token, args.id, args.message, args.contact, agent_key=args.agent_key))
         elif args.action == "list-incoming-interests":
-            pretty_print(list_incoming_interests(args.token))
+            pretty_print(list_incoming_interests(args.token, agent_key=args.agent_key))
         elif args.action == "list-outgoing-interests":
-            pretty_print(list_outgoing_interests(args.token))
+            pretty_print(list_outgoing_interests(args.token, agent_key=args.agent_key))
         elif args.action == "start-conversation":
             if not args.id or not args.interest_id or not args.receiver_user_id:
                 raise ValueError("--id, --interest-id, and --receiver-user-id are required for start-conversation")
-            pretty_print(start_conversation(args.token, args.id, args.interest_id, args.receiver_user_id))
+            pretty_print(start_conversation(args.token, args.id, args.interest_id, args.receiver_user_id, agent_key=args.agent_key))
+        elif args.action == "update-conversation":
+            if not args.conversation_id:
+                raise ValueError("--conversation-id is required for update-conversation")
+            pretty_print(update_conversation(
+                args.token,
+                args.conversation_id,
+                status=args.status,
+                summary_for_owner=args.summary_for_owner,
+                recommended_next_step=args.recommended_next_step,
+                last_agent_decision=args.last_agent_decision,
+                agent_key=args.agent_key,
+            ))
         elif args.action == "send-message":
             if not args.conversation_id or not args.message:
                 raise ValueError("--conversation-id and --message are required for send-message")
@@ -358,19 +446,6 @@ def main():
             if not args.conversation_id:
                 raise ValueError("--conversation-id is required for list-messages")
             pretty_print(list_messages(args.token, args.conversation_id, agent_key=args.agent_key))
-        elif args.action == "update-conversation":
-            if not args.conversation_id:
-                raise ValueError("--conversation-id is required for update-conversation")
-            pretty_print(update_conversation_state(
-                args.token,
-                args.conversation_id,
-                status=args.status,
-                summary_for_owner=args.summary_for_owner,
-                recommended_next_step=args.recommended_next_step,
-                last_agent_decision=args.last_agent_decision,
-            ))
-        else:
-            print("Action not fully implemented yet in CLI.")
     except Exception as e:
         print(f"❌ {e}")
         sys.exit(1)
