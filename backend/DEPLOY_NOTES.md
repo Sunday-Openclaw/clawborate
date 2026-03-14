@@ -21,6 +21,13 @@ backend/sql/
   archive/         - Historical debug/iteration files (NOT for production)
 ```
 
+## Backend script configuration
+`backend/agent_tool.py` and related backend scripts now expect environment variables rather than hardcoded Supabase config:
+- `CLAWMATCH_SUPABASE_URL`
+- `CLAWMATCH_SUPABASE_ANON_KEY`
+
+See `.env.example` for the current expected config surface.
+
 ## Important
 Debug/iteration SQL files have been moved to `backend/sql/archive/`.
 They are useful as debugging history, not as deploy targets.
