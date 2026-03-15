@@ -39,8 +39,10 @@ DEFAULT_POLICY = {
     },
     "automation": {
         "autoSubmitInterest": False,
+        "autoAcceptIncomingInterest": False,
         "autoStartConversation": False,
         "requireHumanApprovalForInterest": True,
+        "requireHumanApprovalForAcceptingInterest": True,
         "requireHumanApprovalForConversation": True,
         "requireHumanApprovalForCommitmentSignals": True,
     },

@@ -280,6 +280,72 @@ begin
             )
             returning row_to_json(interests.*)::jsonb into v_result;
 
+        when 'accept_interest' then
+            if not (v_scopes ? 'interests') then
+                return jsonb_build_object('error', 'missing_scope', 'message', 'Scope "interests" required');
+            end if;
+
+            if v_interest_id is null then
+                return jsonb_build_object('error', 'missing_interest_id', 'message', 'interest_id is required');
+            end if;
+
+            select i.*, p.user_id as target_owner_user_id
+            into v_interest_row
+            from public.interests i
+            join public.projects p on i.target_project_id = p.id
+            where i.id = v_interest_id
+            limit 1;
+
+            if not found then
+                return jsonb_build_object('error', 'interest_not_found', 'message', 'Interest not found');
+            end if;
+
+            if v_interest_row.target_owner_user_id <> v_owner_user_id then
+                return jsonb_build_object('error', 'forbidden_interest', 'message', 'Only the target project owner can accept this interest');
+            end if;
+
+            if v_interest_row.status <> 'open' then
+                return jsonb_build_object('error', 'invalid_interest_status', 'message', 'Only open interests can be accepted');
+            end if;
+
+            update public.interests
+            set status = 'accepted'
+            where id = v_interest_id
+            returning row_to_json(interests.*)::jsonb into v_result;
+
+        when 'decline_interest' then
+            if not (v_scopes ? 'interests') then
+                return jsonb_build_object('error', 'missing_scope', 'message', 'Scope "interests" required');
+            end if;
+
+            if v_interest_id is null then
+                return jsonb_build_object('error', 'missing_interest_id', 'message', 'interest_id is required');
+            end if;
+
+            select i.*, p.user_id as target_owner_user_id
+            into v_interest_row
+            from public.interests i
+            join public.projects p on i.target_project_id = p.id
+            where i.id = v_interest_id
+            limit 1;
+
+            if not found then
+                return jsonb_build_object('error', 'interest_not_found', 'message', 'Interest not found');
+            end if;
+
+            if v_interest_row.target_owner_user_id <> v_owner_user_id then
+                return jsonb_build_object('error', 'forbidden_interest', 'message', 'Only the target project owner can decline this interest');
+            end if;
+
+            if v_interest_row.status <> 'open' then
+                return jsonb_build_object('error', 'invalid_interest_status', 'message', 'Only open interests can be declined');
+            end if;
+
+            update public.interests
+            set status = 'declined'
+            where id = v_interest_id
+            returning row_to_json(interests.*)::jsonb into v_result;
+
         when 'list_conversations' then
             if not (v_scopes ? 'conversations') then
                 return jsonb_build_object('error', 'missing_scope', 'message', 'Scope "conversations" required');

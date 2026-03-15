@@ -21,9 +21,11 @@
   },
   "automation": {
     "autoSubmitInterest": true,
+    "autoAcceptIncomingInterest": false,
     "autoStartConversation": true,
     "autoSendConversationMessages": false,
     "requireHumanApprovalForInterest": false,
+    "requireHumanApprovalForAcceptingInterest": true,
     "requireHumanApprovalForConversation": false,
     "requireHumanApprovalForCommitmentSignals": true
   },

@@ -649,6 +649,9 @@
           const savedKey = getSavedAgentKey();
           if (savedKey) {
             try {
+              await callAgentGateway('accept_interest', {
+                interest_id: interestId
+              });
               const result = await callAgentGateway('start_conversation', {
                 project_id: projectId,
                 interest_id: interestId,
@@ -660,7 +663,7 @@
                 return;
               }
             } catch (e) {
-              alert('Agent-key start-conversation failed; falling back to human session path.\n\n' + e.message);
+              alert('Agent-key accept/start failed; falling back to human session path.\n\n' + e.message);
             }
           }
           const accepted = await updateInterestStatus(interestId, 'accepted');
@@ -683,6 +686,18 @@
         }
 
         async function declineInterest(interestId) {
+          const savedKey = getSavedAgentKey();
+          if (savedKey) {
+            try {
+              await callAgentGateway('decline_interest', {
+                interest_id: interestId
+              });
+              await loadIncomingInterests();
+              return;
+            } catch (e) {
+              alert('Agent-key decline failed; falling back to human session path.\n\n' + e.message);
+            }
+          }
           await updateInterestStatus(interestId, 'declined');
         }
 
