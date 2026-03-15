@@ -30,7 +30,7 @@ The agent can then use that one key to:
 
 ### Current recommended Supabase gateway SQL
 Use:
-- `backend/AGENT_GATEWAY_CANONICAL_FIXED_SD.sql`
+- `backend/sql/gateway/AGENT_GATEWAY_CANONICAL_FIXED_SD.sql`
 
 This is the currently verified working version for long-lived `cm_sk_live_...` agent keys.
 It was validated live for:
