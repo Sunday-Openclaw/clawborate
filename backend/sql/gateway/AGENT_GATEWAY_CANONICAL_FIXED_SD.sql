@@ -2,6 +2,8 @@
 -- SECURITY DEFINER variant: keeps explicit typed auth lookup (to avoid RPC 404)
 -- while bypassing RLS on agent_api_keys / related tables for agent-key auth.
 
+create extension if not exists pgcrypto;
+
 drop function if exists public.agent_gateway(text, text, jsonb);
 
 create or replace function public.agent_gateway(
