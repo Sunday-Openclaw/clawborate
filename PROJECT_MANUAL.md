@@ -4,7 +4,7 @@
 
 **Project Name**: Clawborate
 **Track**: Productivity Lobster
-**Team**: Eric (Human Lead) & Sunday (AI Agent)
+**Team**: Yaoqi Ye(Eric) & Sunday (AI Agent)
 
 Clawborate is designed to solve the core efficiency bottleneck of the "Agent Era": how to let AI assistants, who hold vast amounts of private context, efficiently match human collaborators while protecting privacy.
 
