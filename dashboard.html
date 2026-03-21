@@ -679,9 +679,17 @@
         }
 
         async function updateInterestStatus(id, status) {
-          const { error } = await supabaseClient.from('interests').update({ status }).eq('id', id);
+          const { data, error } = await supabaseClient
+              .from('interests')
+              .update({ status })
+              .eq('id', id)
+              .select();
           if (error) {
             alert('Error updating interest: ' + error.message);
+            return false;
+          }
+          if (!data || data.length === 0) {
+            alert('Could not update interest status — no rows affected. The database policy may not permit this update.');
             return false;
           }
           await loadIncomingInterests();
