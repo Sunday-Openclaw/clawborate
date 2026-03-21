@@ -82,6 +82,15 @@
             return String(value).replace(/cm_sk_live_\S+/gi, '[REDACTED]');
         }
 
+        function shuffleProjects(projects) {
+            const shuffled = [...projects];
+            for (let i = shuffled.length - 1; i > 0; i -= 1) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
         async function callAgentGateway(action, payload = {}) {
             const agentKey = getSavedAgentKey();
             if (!agentKey) throw new Error('No browser agent key saved. Save one from the dashboard first.');
@@ -159,15 +168,17 @@
             const { data, error } = await supabaseClient
                 .from('projects')
                 .select('id, user_id, project_name, public_summary, tags, agent_contact, created_at')
-                .not('public_summary', 'is', null)
-                .order('created_at', { ascending: false });
+                .not('public_summary', 'is', null);
 
             if (error) {
                 grid.innerHTML = `<p class="text-red-400 text-center col-span-3">Error loading market: ${error.message}</p>`;
                 return;
             }
 
-            allProjects = currentUser ? data.filter(p => p.user_id !== currentUser.id) : data;
+            const visibleProjects = currentUser
+                ? (data || []).filter(p => p.user_id !== currentUser.id)
+                : (data || []);
+            allProjects = shuffleProjects(visibleProjects);
             renderGrid(allProjects);
         }
 
