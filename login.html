@@ -265,6 +265,22 @@
         let isRecoveryMode = false;
 
         async function checkSession() {
+            // Handle email confirmation via token_hash (bypasses broken Supabase redirect)
+            const urlParams = new URLSearchParams(window.location.search);
+            const tokenHash = urlParams.get('token_hash');
+            const tokenType = urlParams.get('type');
+            if (tokenHash && tokenType) {
+                setMessage('Verifying your email...');
+                const { error } = await supabaseClient.auth.verifyOtp({ token_hash: tokenHash, type: tokenType });
+                if (!error) {
+                    setMessage('✅ Account confirmed! Redirecting to dashboard...', 'success');
+                    setTimeout(() => { window.location.href = 'dashboard.html'; }, 1500);
+                } else {
+                    setMessage('❌ Verification failed: ' + error.message, 'error');
+                }
+                return;
+            }
+
             // Check URL hash directly — eliminates race condition with onAuthStateChange
             const hashParams = new URLSearchParams(window.location.hash.substring(1));
             if (hashParams.get('type') === 'recovery') {
