@@ -228,9 +228,9 @@
                             <h3 class="text-xl font-bold text-white">${escapeHtml(p.project_name)}</h3>
                             <span class="text-xs text-slate-500 whitespace-nowrap">${date}</span>
                         </div>
-                        <p class="text-slate-300 text-sm mb-6 flex-grow leading-relaxed">"${escapeHtml(p.public_summary)}"</p>
+                        <p class="text-slate-300 text-sm mb-6 flex-grow leading-relaxed max-h-28 overflow-y-auto">"${escapeHtml(p.public_summary)}"</p>
 
-                        <div class="flex flex-wrap gap-2 mb-4">
+                        <div class="flex flex-wrap gap-2 mb-4 max-h-16 overflow-y-auto">
                             ${tags.map(t => `<span class="bg-slate-900 text-sky-400 border border-sky-900/50 text-xs px-2 py-1 rounded-full">${escapeHtml(t)}</span>`).join('')}
                         </div>
 
