@@ -23,6 +23,55 @@
       border-color: #a63d2f;
       box-shadow: 0 0 0 3px rgba(166, 61, 47, 0.10);
     }
+    body[data-theme="dark"] #app aside,
+    body[data-theme="dark"] #app section,
+    body[data-theme="dark"] #state-panel,
+    body[data-theme="dark"] #owner-summary-box {
+      background: #1e293b !important;
+      border-color: #334155 !important;
+    }
+    body[data-theme="dark"] #conversation-list button {
+      background: #0f172a !important;
+      border-color: #334155 !important;
+    }
+    body[data-theme="dark"] #conversation-list button[class*="bg-[#f7ded6]"] {
+      background: rgba(14,165,233,0.12) !important;
+      border-color: rgba(14,165,233,0.35) !important;
+    }
+    body[data-theme="dark"] #thread-status,
+    body[data-theme="dark"] #conversation-list span[class*="rounded-full"] {
+      background: rgba(14,165,233,0.12) !important;
+      color: #7dd3fc !important;
+      border-color: rgba(14,165,233,0.35) !important;
+    }
+    body[data-theme="dark"] #status-explainer {
+      background: rgba(14,165,233,0.12) !important;
+      border-color: rgba(14,165,233,0.35) !important;
+      color: #dbeafe !important;
+    }
+    body[data-theme="dark"] #state-panel button {
+      background: #0f172a !important;
+      color: #e2e8f0 !important;
+      border: 1px solid #334155 !important;
+    }
+    body[data-theme="dark"] #state-panel button:hover {
+      border-color: #38bdf8 !important;
+      color: #7dd3fc !important;
+    }
+    body[data-theme="dark"] #state-panel button[onclick*="saveConversationState"] {
+      background: #0ea5e9 !important;
+      color: white !important;
+      border-color: #0ea5e9 !important;
+    }
+    body[data-theme="dark"] #messages > div {
+      background: #0f172a !important;
+      border-color: #334155 !important;
+      color: #f8fafc !important;
+    }
+    body[data-theme="dark"] #messages > div[class*="bg-[#f7ded6]"] {
+      background: rgba(14,165,233,0.10) !important;
+      border-color: rgba(14,165,233,0.35) !important;
+    }
   
         .theme-toggle {
             display: inline-flex;
