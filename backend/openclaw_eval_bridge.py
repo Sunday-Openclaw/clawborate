@@ -11,13 +11,13 @@ Default behavior is safe for a single-user/self-hosted setup:
 - mapping can be overridden by email in `agent_identity_map.json`
 """
 
-from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
 import os
 import pathlib
-import urllib.request
 import urllib.error
-from typing import Any, Dict
+import urllib.request
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from typing import Any
 
 from evaluation_interface import EvaluationResult
 
@@ -31,10 +31,12 @@ if not OPENCLAW_GATEWAY_TOKEN:
     raise RuntimeError("OPENCLAW_GATEWAY_TOKEN environment variable is required")
 OPENCLAW_AGENT_ID = os.environ.get("CLAWMATCH_OPENCLAW_AGENT_ID", "main")
 DEFAULT_SESSION_KEY = os.environ.get("CLAWMATCH_DEFAULT_OPENCLAW_SESSION_KEY", "agent:main:main")
-MAP_PATH = pathlib.Path(os.environ.get("CLAWMATCH_AGENT_MAP_PATH", str(pathlib.Path(__file__).with_name("agent_identity_map.json"))))
+MAP_PATH = pathlib.Path(
+    os.environ.get("CLAWMATCH_AGENT_MAP_PATH", str(pathlib.Path(__file__).with_name("agent_identity_map.json")))
+)
 
 
-def json_response(handler: BaseHTTPRequestHandler, status: int, payload: Dict[str, Any]) -> None:
+def json_response(handler: BaseHTTPRequestHandler, status: int, payload: dict[str, Any]) -> None:
     body = json.dumps(payload).encode("utf-8")
     handler.send_response(status)
     handler.send_header("Content-Type", "application/json")
@@ -46,18 +48,20 @@ def json_response(handler: BaseHTTPRequestHandler, status: int, payload: Dict[st
     handler.wfile.write(body)
 
 
-def load_identity_map() -> Dict[str, Any]:
+def load_identity_map() -> dict[str, Any]:
     if MAP_PATH.exists():
         try:
-            return json.loads(MAP_PATH.read_text())
+            result: dict[str, Any] = json.loads(MAP_PATH.read_text())
+            return result
         except (json.JSONDecodeError, OSError) as e:
             import logging
+
             logging.warning("Failed to load identity map from %s: %s", MAP_PATH, e)
             return {}
     return {}
 
 
-def resolve_session(current_user: Dict[str, Any]) -> Dict[str, str]:
+def resolve_session(current_user: dict[str, Any]) -> dict[str, str]:
     data = load_identity_map()
     by_email = data.get("by_email", {})
     email = (current_user.get("email") or "").strip().lower()
@@ -77,7 +81,7 @@ def resolve_session(current_user: Dict[str, Any]) -> Dict[str, str]:
     }
 
 
-def build_agent_prompt(target_project: Dict[str, Any], current_user: Dict[str, Any]) -> str:
+def build_agent_prompt(target_project: dict[str, Any], current_user: dict[str, Any]) -> str:
     return f"""
 You are evaluating a Clawborate market listing for your human.
 
@@ -106,7 +110,7 @@ Return ONLY strict JSON with this schema:
 """.strip()
 
 
-def call_openclaw(prompt: str, agent_id: str, session_key: str) -> Dict[str, Any]:
+def call_openclaw(prompt: str, agent_id: str, session_key: str) -> dict[str, Any]:
     req_body = {
         "model": f"openclaw:{agent_id}",
         "messages": [
@@ -131,10 +135,11 @@ def call_openclaw(prompt: str, agent_id: str, session_key: str) -> Dict[str, Any
     )
 
     with urllib.request.urlopen(req, timeout=120) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+        result: dict[str, Any] = json.loads(resp.read().decode("utf-8"))
+        return result
 
 
-def extract_text(chat_response: Dict[str, Any]) -> str:
+def extract_text(chat_response: dict[str, Any]) -> str:
     choices = chat_response.get("choices") or []
     if not choices:
         raise ValueError("OpenClaw response had no choices")
@@ -161,7 +166,7 @@ def parse_agent_json(text: str) -> EvaluationResult:
     end = cleaned.rfind("}")
     if start == -1 or end == -1 or end < start:
         raise ValueError(f"Could not find JSON object in model output: {text[:400]}")
-    data = json.loads(cleaned[start:end+1])
+    data = json.loads(cleaned[start : end + 1])
     data["source"] = "openclaw"
     return EvaluationResult.from_dict(data)
 
@@ -198,22 +203,35 @@ class Handler(BaseHTTPRequestHandler):
             response["route"] = route
             json_response(self, 200, response)
         except (urllib.error.URLError, urllib.error.HTTPError) as e:
-            json_response(self, 502, {
-                "error": "openclaw_network_error",
-                "message": str(e),
-            })
+            json_response(
+                self,
+                502,
+                {
+                    "error": "openclaw_network_error",
+                    "message": str(e),
+                },
+            )
         except (json.JSONDecodeError, ValueError, KeyError) as e:
-            json_response(self, 502, {
-                "error": "openclaw_parse_error",
-                "message": str(e),
-            })
+            json_response(
+                self,
+                502,
+                {
+                    "error": "openclaw_parse_error",
+                    "message": str(e),
+                },
+            )
         except Exception as e:
             import logging
+
             logging.exception("Unexpected error in openclaw bridge")
-            json_response(self, 500, {
-                "error": "internal_error",
-                "message": str(e),
-            })
+            json_response(
+                self,
+                500,
+                {
+                    "error": "internal_error",
+                    "message": str(e),
+                },
+            )
 
 
 def main() -> None:

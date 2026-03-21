@@ -10,17 +10,19 @@ as the default architecture. If it is ever used for experiments, it must read
 credentials only from environment variables and must never hardcode secrets.
 """
 
-from http.server import BaseHTTPRequestHandler, HTTPServer
 import hashlib
 import json
 import os
-from typing import Any, Dict, Optional
-import requests
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from typing import Any
 
+import requests
 from supabase_client import (
-    SUPABASE_URL, require_config,
+    SUPABASE_URL,
+    require_config,
+)
+from supabase_client import (
     service_headers as _service_headers,
-    SupabaseApiError,
 )
 
 require_config()
@@ -41,7 +43,7 @@ class ApiError(Exception):
         self.message = message
 
 
-def json_response(handler: BaseHTTPRequestHandler, status: int, payload: Dict[str, Any]) -> None:
+def json_response(handler: BaseHTTPRequestHandler, status: int, payload: dict[str, Any]) -> None:
     body = json.dumps(payload).encode("utf-8")
     handler.send_response(status)
     handler.send_header("Content-Type", "application/json")
@@ -53,11 +55,11 @@ def json_response(handler: BaseHTTPRequestHandler, status: int, payload: Dict[st
     handler.wfile.write(body)
 
 
-def service_headers() -> Dict[str, str]:
+def service_headers() -> dict[str, str]:
     try:
         return _service_headers()
     except RuntimeError as e:
-        raise ApiError(500, "server_misconfigured", str(e))
+        raise ApiError(500, "server_misconfigured", str(e)) from e
 
 
 def hash_agent_key(plaintext: str) -> str:
@@ -68,10 +70,10 @@ def extract_bearer(handler: BaseHTTPRequestHandler) -> str:
     auth = handler.headers.get("Authorization", "")
     if not auth.startswith("Bearer "):
         raise ApiError(401, "missing_bearer", "Missing Authorization: Bearer <agent-key>")
-    return auth[len("Bearer "):].strip()
+    return auth[len("Bearer ") :].strip()
 
 
-def authenticate_agent_key(plaintext_key: str) -> Dict[str, Any]:
+def authenticate_agent_key(plaintext_key: str) -> dict[str, Any]:
     key_hash = hash_agent_key(plaintext_key)
     url = (
         f"{SUPABASE_URL}/rest/v1/agent_api_keys"
@@ -98,10 +100,11 @@ def authenticate_agent_key(plaintext_key: str) -> Dict[str, Any]:
         timeout=30,
     )
     patch.raise_for_status()
-    return row
+    result: dict[str, Any] = row
+    return result
 
 
-def require_scope(agent_row: Dict[str, Any], needed_scope: str) -> None:
+def require_scope(agent_row: dict[str, Any], needed_scope: str) -> None:
     scopes = agent_row.get("scopes") or []
     if needed_scope not in scopes:
         raise ApiError(403, "missing_scope", f"Agent key missing scope: {needed_scope}")
@@ -147,7 +150,7 @@ def load_messages_for_conversation(owner_user_id: str, conversation_id: str) -> 
     return res.json()
 
 
-def send_message(owner_user_id: str, conversation_id: str, message: str, agent_name: Optional[str]) -> Any:
+def send_message(owner_user_id: str, conversation_id: str, message: str, agent_name: str | None) -> Any:
     if not check_conversation_access(owner_user_id, conversation_id):
         raise ApiError(403, "forbidden_conversation", "Conversation is not accessible for this agent key")
     payload = {
@@ -156,7 +159,9 @@ def send_message(owner_user_id: str, conversation_id: str, message: str, agent_n
         "sender_agent_name": agent_name,
         "message": message,
     }
-    res = requests.post(f"{SUPABASE_URL}/rest/v1/conversation_messages", headers=service_headers(), json=payload, timeout=30)
+    res = requests.post(
+        f"{SUPABASE_URL}/rest/v1/conversation_messages", headers=service_headers(), json=payload, timeout=30
+    )
     res.raise_for_status()
     return res.json()
 
@@ -174,7 +179,7 @@ def list_market_for_agent(owner_user_id: str, limit: int = 20) -> Any:
     return res.json()
 
 
-def submit_interest_for_agent(owner_user_id: str, project_id: str, message: str, contact: Optional[str]) -> Any:
+def submit_interest_for_agent(owner_user_id: str, project_id: str, message: str, contact: str | None) -> Any:
     payload = {
         "from_user_id": owner_user_id,
         "target_project_id": project_id,

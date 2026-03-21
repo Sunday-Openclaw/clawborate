@@ -19,10 +19,11 @@ import sys
 from pathlib import Path
 
 import requests
-
 from supabase_client import (
-    SUPABASE_URL, SUPABASE_ANON_KEY as ANON_KEY,
-    anon_headers, require_config, get_current_user,
+    SUPABASE_URL,
+    anon_headers,
+    get_current_user,
+    require_config,
 )
 
 require_config()
@@ -112,7 +113,6 @@ def headers(token: str):
     return anon_headers(token)
 
 
-
 def list_market(token: str, limit: int = 50):
     url = (
         f"{SUPABASE_URL}/rest/v1/projects"
@@ -122,7 +122,6 @@ def list_market(token: str, limit: int = 50):
     r = requests.get(url, headers=headers(token), timeout=30)
     r.raise_for_status()
     return r.json()
-
 
 
 def list_open_interests(token: str):
@@ -136,7 +135,6 @@ def list_open_interests(token: str):
     return r.json()
 
 
-
 def list_conversations(token: str):
     url = (
         f"{SUPABASE_URL}/rest/v1/conversations"
@@ -146,7 +144,6 @@ def list_conversations(token: str):
     r = requests.get(url, headers=headers(token), timeout=30)
     r.raise_for_status()
     return r.json()
-
 
 
 def submit_interest(token: str, project_id: str, message: str, contact: str | None = None):
@@ -163,7 +160,6 @@ def submit_interest(token: str, project_id: str, message: str, contact: str | No
     )
     r.raise_for_status()
     return r.json()
-
 
 
 def start_conversation(token: str, project_id: str, interest_id: str, receiver_user_id: str):
@@ -185,7 +181,6 @@ def start_conversation(token: str, project_id: str, interest_id: str, receiver_u
     return r.json()
 
 
-
 def deep_merge(base, override):
     if not isinstance(base, dict) or not isinstance(override, dict):
         return override
@@ -198,14 +193,12 @@ def deep_merge(base, override):
     return merged
 
 
-
 def tokenize(text: str):
     return {
         word.strip().lower()
         for word in "".join(ch if ch.isalnum() else " " for ch in (text or "")).split()
         if len(word.strip()) > 2
     }
-
 
 
 def project_text(project: dict):
@@ -218,7 +211,6 @@ def project_text(project: dict):
     )
 
 
-
 def overlap_count(project: dict, items: list[str]):
     if not items:
         return 0
@@ -229,11 +221,9 @@ def overlap_count(project: dict, items: list[str]):
     return len(words & wanted)
 
 
-
 def contains_any_phrase(project: dict, phrases: list[str]):
     text = project_text(project).lower()
     return any((phrase or "").strip().lower() in text for phrase in phrases if phrase)
-
 
 
 def must_have_any(project: dict, phrases: list[str]):
@@ -241,7 +231,6 @@ def must_have_any(project: dict, phrases: list[str]):
         return True
     text = project_text(project).lower()
     return any((phrase or "").strip().lower() in text for phrase in phrases if phrase)
-
 
 
 def fit_band(score: float):
@@ -256,7 +245,6 @@ def fit_band(score: float):
     if score >= 0.40:
         return "low-medium"
     return "low"
-
 
 
 def build_interest_message(project: dict, decision: dict):
@@ -277,7 +265,6 @@ def build_interest_message(project: dict, decision: dict):
     return f"My owner may be a promising fit for {name}. Interested in exploring whether there is a good collaboration fit."
 
 
-
 def build_handoff_summary(project: dict, decision: dict):
     reasons = "; ".join(decision.get("reasons_for_fit", [])[:2]) or "promising owner-specific alignment"
     risks = "; ".join(decision.get("risks_or_mismatches", [])[:2]) or "no major blockers yet"
@@ -293,7 +280,6 @@ def build_handoff_summary(project: dict, decision: dict):
     }
 
 
-
 def build_conversation_brief(project: dict, decision: dict, policy: dict):
     goals = policy.get("conversationPolicy", {}).get("goals", [])[:3]
     return {
@@ -306,7 +292,6 @@ def build_conversation_brief(project: dict, decision: dict, policy: dict):
             "Could you share a bit more about what kind of contribution would be most useful?"
         ),
     }
-
 
 
 def build_conversation_auto_start_signal(decision: dict, policy: dict):
@@ -337,7 +322,6 @@ def build_conversation_auto_start_signal(decision: dict, policy: dict):
     }
 
 
-
 def build_conversation_state_plan(decision: dict):
     conversation_id = decision.get("existing_conversation_id")
     if decision.get("decision") == "handoff":
@@ -352,8 +336,7 @@ def build_conversation_state_plan(decision: dict):
                 f"Risks: {summary.get('current_risks', 'none noted')}"
             ),
             "recommended_next_step": summary.get(
-                "recommended_next_step",
-                "Review the thread and decide whether to continue personally."
+                "recommended_next_step", "Review the thread and decide whether to continue personally."
             ),
             "ready_to_apply": bool(conversation_id),
         }
@@ -375,8 +358,9 @@ def build_conversation_state_plan(decision: dict):
     return None
 
 
-
-def evaluate_project(project: dict, policy: dict, my_user_id: str, existing_interest_map: dict, existing_conversation_map: dict):
+def evaluate_project(
+    project: dict, policy: dict, my_user_id: str, existing_interest_map: dict, existing_conversation_map: dict
+):
     reasons = []
     risks = []
     missing = []
@@ -509,7 +493,12 @@ def evaluate_project(project: dict, policy: dict, my_user_id: str, existing_inte
     action = "none"
     handoff_reason = None
 
-    if existing_interest and existing_interest.get("status") == "accepted" and score >= conversation_t and confidence >= min_confidence_for_conversation:
+    if (
+        existing_interest
+        and existing_interest.get("status") == "accepted"
+        and score >= conversation_t
+        and confidence >= min_confidence_for_conversation
+    ):
         decision = "conversation"
         action = "draft-conversation"
     elif score >= interest_t and confidence >= min_confidence_for_interest and reasons:
@@ -522,24 +511,28 @@ def evaluate_project(project: dict, policy: dict, my_user_id: str, existing_inte
         decision = "skip"
         action = "none"
 
-    if decision == "interest" and decision_policy.get("preferWatchWhenUncertain", True):
-        if len(risks) >= 2 and score < max(0.8, interest_t + 0.05):
-            decision = "watch"
-            action = "watch"
+    if (
+        decision == "interest"
+        and decision_policy.get("preferWatchWhenUncertain", True)
+        and len(risks) >= 2
+        and score < max(0.8, interest_t + 0.05)
+    ):
+        decision = "watch"
+        action = "watch"
 
     if decision == "interest" and decision_policy.get("requireSpecificFitReasonBeforeInterest", True) and not reasons:
         decision = "watch"
         action = "watch"
 
-    if decision in {"interest", "conversation"}:
-        if (
-            handoff_policy.get("notifyOnNeedClarification", True)
-            and len(missing) >= 2
-            and score >= max(interest_t, 0.68)
-        ):
-            decision = "handoff"
-            action = "human-review"
-            handoff_reason = "promising match but too much key information is still missing"
+    if (
+        decision in {"interest", "conversation"}
+        and handoff_policy.get("notifyOnNeedClarification", True)
+        and len(missing) >= 2
+        and score >= max(interest_t, 0.68)
+    ):
+        decision = "handoff"
+        action = "human-review"
+        handoff_reason = "promising match but too much key information is still missing"
 
     if decision == "conversation" and handoff_policy.get("notifyOnMutualInterest", True):
         decision = "handoff"
@@ -589,7 +582,6 @@ def evaluate_project(project: dict, policy: dict, my_user_id: str, existing_inte
     return result
 
 
-
 def summarize_report(report: dict):
     return {
         "market_count": report.get("market_count", 0),
@@ -624,28 +616,29 @@ def summarize_report(report: dict):
     }
 
 
-
 def build_execution_plan(report: dict):
-    plan = {
+    plan: dict[str, list] = {
         "interest_submissions": [],
         "conversation_state_updates": [],
         "conversation_auto_start_candidates": [],
     }
 
     for decision in report.get("selected_interests", []):
-        plan["interest_submissions"].append({
-            "project_id": decision.get("project_id"),
-            "project_name": decision.get("project_name"),
-            "message": decision.get("opening_message"),
-            "reason": "; ".join(decision.get("reasons_for_fit", [])[:2]) or "promising fit",
-        })
+        plan["interest_submissions"].append(
+            {
+                "project_id": decision.get("project_id"),
+                "project_name": decision.get("project_name"),
+                "message": decision.get("opening_message"),
+                "reason": "; ".join(decision.get("reasons_for_fit", [])[:2]) or "promising fit",
+            }
+        )
 
     for decision in report.get("handoffs", []) + report.get("conversation_candidates", []):
         state_plan = decision.get("conversation_state_plan")
         if state_plan:
             if state_plan.get("conversation_id"):
                 state_plan["agent_tool_command"] = (
-                    f"python3 backend/agent_tool.py update-conversation --token \"YOUR_TOKEN\" "
+                    f'python3 backend/agent_tool.py update-conversation --token "YOUR_TOKEN" '
                     f"--conversation-id \"{state_plan['conversation_id']}\" --status \"{state_plan['target_status']}\" "
                     f"--summary-for-owner \"{state_plan['summary_for_owner']}\" "
                     f"--recommended-next-step \"{state_plan['recommended_next_step']}\" "
@@ -655,19 +648,20 @@ def build_execution_plan(report: dict):
 
     for decision in report.get("all_decisions", []):
         if decision.get("auto_start_conversation_candidate"):
-            plan["conversation_auto_start_candidates"].append({
-                "project_id": decision.get("project_id"),
-                "project_name": decision.get("project_name"),
-                "receiver_user_id": decision.get("target_project_owner_user_id"),
-                "existing_interest_id": decision.get("existing_interest_id"),
-                "existing_interest_status": decision.get("existing_interest_status"),
-                "conversation_trigger": decision.get("conversation_trigger"),
-                "blocked_by": decision.get("blocked_by", []),
-                "suggested_action": "start-conversation",
-            })
+            plan["conversation_auto_start_candidates"].append(
+                {
+                    "project_id": decision.get("project_id"),
+                    "project_name": decision.get("project_name"),
+                    "receiver_user_id": decision.get("target_project_owner_user_id"),
+                    "existing_interest_id": decision.get("existing_interest_id"),
+                    "existing_interest_status": decision.get("existing_interest_status"),
+                    "conversation_trigger": decision.get("conversation_trigger"),
+                    "blocked_by": decision.get("blocked_by", []),
+                    "suggested_action": "start-conversation",
+                }
+            )
 
     return plan
-
 
 
 def choose_candidates(token: str, policy: dict):
@@ -681,7 +675,7 @@ def choose_candidates(token: str, policy: dict):
     existing_conversation_map = {row["project_id"]: row for row in conversations}
 
     decisions = [
-        evaluate_project(project, policy, me.get("id"), existing_interest_map, existing_conversation_map)
+        evaluate_project(project, policy, str(me.get("id", "")), existing_interest_map, existing_conversation_map)
         for project in market
     ]
 
@@ -716,12 +710,13 @@ def choose_candidates(token: str, policy: dict):
     return report
 
 
-
 def main():
     parser = argparse.ArgumentParser(description="Clawborate autopilot v1")
     parser.add_argument("--token", required=True, help="User's Clawborate API key / JWT")
     parser.add_argument("--policy", required=True, help="Path to autopilot policy JSON")
-    parser.add_argument("--send", action="store_true", help="Actually submit interests and conversation starts instead of dry-run only")
+    parser.add_argument(
+        "--send", action="store_true", help="Actually submit interests and conversation starts instead of dry-run only"
+    )
     parser.add_argument("--agent-contact", help="Agent contact to attach when sending interests")
     args = parser.parse_args()
 
@@ -735,45 +730,64 @@ def main():
     report = choose_candidates(args.token, policy)
 
     if not args.send:
-        print(json.dumps({
-            "mode": "dry-run",
-            "policy": policy,
-            "report": report,
-        }, indent=2, ensure_ascii=False))
+        print(
+            json.dumps(
+                {
+                    "mode": "dry-run",
+                    "policy": policy,
+                    "report": report,
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
         return
 
     automation = policy.get("automation", {})
     if not automation.get("autoSubmitInterest", False):
-        print(json.dumps({
-            "mode": "blocked-send",
-            "reason": "policy does not allow autoSubmitInterest",
-            "report": report,
-        }, indent=2, ensure_ascii=False))
+        print(
+            json.dumps(
+                {
+                    "mode": "blocked-send",
+                    "reason": "policy does not allow autoSubmitInterest",
+                    "report": report,
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
         return
 
     sent = []
     for decision in report["selected_interests"]:
-        message = decision.get("opening_message") or build_interest_message({
-            "project_name": decision.get("project_name"),
-            "tags": decision.get("tags"),
-        }, decision)
+        message = decision.get("opening_message") or build_interest_message(
+            {
+                "project_name": decision.get("project_name"),
+                "tags": decision.get("tags"),
+            },
+            decision,
+        )
         result = submit_interest(
             args.token,
             decision["project_id"],
             message,
             args.agent_contact,
         )
-        sent.append({
-            "project_id": decision["project_id"],
-            "project_name": decision.get("project_name"),
-            "decision": decision,
-            "submit_result": result,
-        })
+        sent.append(
+            {
+                "project_id": decision["project_id"],
+                "project_name": decision.get("project_name"),
+                "decision": decision,
+                "submit_result": result,
+            }
+        )
 
     automation = policy.get("automation", {})
     started_conversations = []
     auto_start_candidates = report.get("execution_plan", {}).get("conversation_auto_start_candidates", [])
-    if automation.get("autoStartConversation", False) and not automation.get("requireHumanApprovalForConversation", True):
+    if automation.get("autoStartConversation", False) and not automation.get(
+        "requireHumanApprovalForConversation", True
+    ):
         for candidate in auto_start_candidates:
             interest_id = candidate.get("existing_interest_id")
             receiver_user_id = candidate.get("receiver_user_id")
@@ -781,25 +795,33 @@ def main():
             if not interest_id or not receiver_user_id or not project_id:
                 continue
             result = start_conversation(args.token, project_id, interest_id, receiver_user_id)
-            started_conversations.append({
-                "project_id": project_id,
-                "project_name": candidate.get("project_name"),
-                "interest_id": interest_id,
-                "receiver_user_id": receiver_user_id,
-                "result": result,
-            })
+            started_conversations.append(
+                {
+                    "project_id": project_id,
+                    "project_name": candidate.get("project_name"),
+                    "interest_id": interest_id,
+                    "receiver_user_id": receiver_user_id,
+                    "result": result,
+                }
+            )
 
-    print(json.dumps({
-        "mode": "send",
-        "count": len(sent),
-        "sent": sent,
-        "started_conversations": started_conversations,
-        "watchlist": report["watchlist"],
-        "handoffs": report["handoffs"],
-        "conversation_candidates": report["conversation_candidates"],
-        "execution_plan": report["execution_plan"],
-        "summary": report["summary"],
-    }, indent=2, ensure_ascii=False))
+    print(
+        json.dumps(
+            {
+                "mode": "send",
+                "count": len(sent),
+                "sent": sent,
+                "started_conversations": started_conversations,
+                "watchlist": report["watchlist"],
+                "handoffs": report["handoffs"],
+                "conversation_candidates": report["conversation_candidates"],
+                "execution_plan": report["execution_plan"],
+                "summary": report["summary"],
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
 
 
 if __name__ == "__main__":

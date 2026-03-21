@@ -19,15 +19,16 @@ IMPORTANT:
 - This backend avoids storing large profile snapshots in Supabase.
 """
 
-from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
 import os
-import urllib.request
 import urllib.error
-from typing import Any, Dict
+import urllib.request
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from typing import Any
 
 from supabase_client import (
-    SUPABASE_URL, SUPABASE_ANON_KEY,
+    SUPABASE_ANON_KEY,
+    SUPABASE_URL,
     require_config,
 )
 
@@ -38,7 +39,7 @@ ALLOWED_ORIGIN = os.environ.get("CLAWMATCH_ALLOWED_ORIGIN", "*")
 OPENCLAW_AGENT_EVAL_URL = os.environ.get("OPENCLAW_AGENT_EVAL_URL", "").strip()
 
 
-def json_response(handler: BaseHTTPRequestHandler, status: int, payload: Dict[str, Any]) -> None:
+def json_response(handler: BaseHTTPRequestHandler, status: int, payload: dict[str, Any]) -> None:
     body = json.dumps(payload).encode("utf-8")
     handler.send_response(status)
     handler.send_header("Content-Type", "application/json")
@@ -63,17 +64,18 @@ def supabase_get(path: str, user_jwt: str) -> Any:
         return json.loads(resp.read().decode("utf-8"))
 
 
-def fetch_target_project(project_id: str, user_jwt: str) -> Dict[str, Any]:
+def fetch_target_project(project_id: str, user_jwt: str) -> dict[str, Any]:
     rows = supabase_get(
         f"/rest/v1/projects?id=eq.{project_id}&select=id,user_id,project_name,public_summary,private_constraints,tags,agent_contact,created_at",
         user_jwt,
     )
     if not rows:
         raise ValueError("Target project not found")
-    return rows[0]
+    result: dict[str, Any] = rows[0]
+    return result
 
 
-def fetch_current_user(user_jwt: str) -> Dict[str, Any]:
+def fetch_current_user(user_jwt: str) -> dict[str, Any]:
     req = urllib.request.Request(
         f"{SUPABASE_URL}/auth/v1/user",
         headers={
@@ -83,10 +85,13 @@ def fetch_current_user(user_jwt: str) -> Dict[str, Any]:
         },
     )
     with urllib.request.urlopen(req, timeout=20) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+        result: dict[str, Any] = json.loads(resp.read().decode("utf-8"))
+        return result
 
 
-def call_live_agent_adapter(target_project: Dict[str, Any], user_jwt: str, current_user: Dict[str, Any]) -> Dict[str, Any]:
+def call_live_agent_adapter(
+    target_project: dict[str, Any], user_jwt: str, current_user: dict[str, Any]
+) -> dict[str, Any]:
     """
     Adapter contract for real live-agent evaluation.
 
@@ -126,7 +131,8 @@ def call_live_agent_adapter(target_project: Dict[str, Any], user_jwt: str, curre
             method="POST",
         )
         with urllib.request.urlopen(req, timeout=60) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+            result: dict[str, Any] = json.loads(resp.read().decode("utf-8"))
+            return result
 
     return {
         "error": "live_agent_not_configured",
@@ -168,11 +174,15 @@ class Handler(BaseHTTPRequestHandler):
             if result.get("error"):
                 json_response(self, 501, result)
                 return
-            json_response(self, 200, {
-                "ok": True,
-                "project": target_project,
-                "evaluation": result,
-            })
+            json_response(
+                self,
+                200,
+                {
+                    "ok": True,
+                    "project": target_project,
+                    "evaluation": result,
+                },
+            )
         except urllib.error.HTTPError as e:
             details = e.read().decode("utf-8", errors="ignore")
             json_response(self, 502, {"error": "supabase_http_error", "status": e.code, "details": details})
