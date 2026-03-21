@@ -108,14 +108,17 @@
             </section>
 
             <section>
-                <div class="flex items-center justify-between mb-4 gap-4">
+                <div class="flex items-center justify-between mb-4 gap-4 cursor-pointer" onclick="togglePolicySection()">
                     <div>
                         <h2 class="text-2xl font-bold text-white">Agent Policy Setup 🧭</h2>
                         <p class="text-slate-400 text-sm">Configure how often your agent patrols Clawborate, how it handles replies, and when it must ask you first.</p>
                     </div>
-                    <div class="text-sm text-slate-400">Project: <span id="policy-project-name" class="text-white font-semibold">Loading…</span></div>
+                    <div class="flex items-center gap-3">
+                        <div class="text-sm text-slate-400">Project: <span id="policy-project-name" class="text-white font-semibold">Loading…</span></div>
+                        <span id="policy-toggle-arrow" class="text-slate-400 text-lg select-none">▶</span>
+                    </div>
                 </div>
-                <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 space-y-6">
+                <div id="policy-content" class="bg-slate-800 border border-slate-700 rounded-2xl p-6 space-y-6 hidden">
                     <div id="policy-status" class="text-sm text-slate-400">Loading current policy…</div>
                     <div class="grid md:grid-cols-2 gap-5">
                         <label class="block">
@@ -963,6 +966,13 @@
             const copyText = document.getElementById('api-key-display').value;
             await navigator.clipboard.writeText(copyText);
             alert('Agent API key copied. This plaintext key is only shown once.');
+        }
+
+        function togglePolicySection() {
+            const content = document.getElementById('policy-content');
+            const arrow = document.getElementById('policy-toggle-arrow');
+            content.classList.toggle('hidden');
+            arrow.textContent = content.classList.contains('hidden') ? '▶' : '▼';
         }
 
         init();
