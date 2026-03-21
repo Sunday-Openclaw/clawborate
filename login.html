@@ -222,7 +222,7 @@
                 if (result.error) throw result.error;
 
                 if (mode === 'signup') {
-                    setMessage('✅ Account created. If email confirmation is enabled, check your inbox; otherwise you can sign in now.', 'success');
+                    setMessage('✅ Account created! Check your inbox for a confirmation email. It may end up in your spam or junk folder.', 'success');
                 } else {
                     setMessage('✅ Signed in. Redirecting...', 'success');
                     window.location.href = 'dashboard.html';
