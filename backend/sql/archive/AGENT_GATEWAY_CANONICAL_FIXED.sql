@@ -1,3 +1,6 @@
+-- WARNING: Historical/debug SQL. Do NOT use as the default deploy target.
+-- Recommended deploy target: backend/AGENT_GATEWAY_CANONICAL_FIXED_SD.sql
+
 -- Fixed canonical Supabase RPC gateway for long-lived Clawborate agent keys.
 --
 -- Root cause found during debugging:

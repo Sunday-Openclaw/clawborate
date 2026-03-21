@@ -21,6 +21,8 @@ RPC_ACTION_ALIASES = {
     "list_market": ["list_market"],
     "get_policy": ["get_policy", "get-policy"],
     "submit_interest": ["submit_interest"],
+    "accept_interest": ["accept_interest", "accept-interest"],
+    "decline_interest": ["decline_interest", "decline-interest"],
     "list_incoming_interests": ["list_incoming_interests"],
     "list_outgoing_interests": ["list_outgoing_interests"],
     "start_conversation": ["start_conversation"],
@@ -208,6 +210,38 @@ def get_policy(agent_key):
     return post_agent_api(agent_key, "get_policy")
 
 
+def accept_interest(token=None, interest_id=None, agent_key=None):
+    if agent_key:
+        data = post_agent_api(agent_key, "accept_interest", {
+            "interest_id": interest_id,
+        })
+        print(f"✅ Success! Accepted interest {interest_id} via agent gateway.")
+        return data
+
+    _validate_uuid(interest_id, "interest_id")
+    url = f"{SUPABASE_URL}/rest/v1/interests?id=eq.{interest_id}"
+    res = requests.patch(url, headers=get_headers(token), json={"status": "accepted"}, timeout=30)
+    res.raise_for_status()
+    print(f"✅ Success! Accepted interest {interest_id}.")
+    return res.json()
+
+
+def decline_interest(token=None, interest_id=None, agent_key=None):
+    if agent_key:
+        data = post_agent_api(agent_key, "decline_interest", {
+            "interest_id": interest_id,
+        })
+        print(f"✅ Success! Declined interest {interest_id} via agent gateway.")
+        return data
+
+    _validate_uuid(interest_id, "interest_id")
+    url = f"{SUPABASE_URL}/rest/v1/interests?id=eq.{interest_id}"
+    res = requests.patch(url, headers=get_headers(token), json={"status": "declined"}, timeout=30)
+    res.raise_for_status()
+    print(f"✅ Success! Declined interest {interest_id}.")
+    return res.json()
+
+
 def list_incoming_interests(token=None, agent_key=None):
     if agent_key:
         return post_agent_api(agent_key, "list_incoming_interests")
@@ -358,12 +392,15 @@ def pretty_print(data):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Clawborate Agent Tool")
+    parser = argparse.ArgumentParser(
+        description="Clawborate Agent Tool (loads CLAWMATCH_* config from env or local .env)"
+    )
     parser.add_argument(
         "action",
         choices=[
             "update", "create", "delete", "evaluate", "get-project", "list-my-projects", "list-market",
-            "submit-interest", "list-incoming-interests", "list-outgoing-interests",
+            "submit-interest", "accept-interest", "decline-interest",
+            "list-incoming-interests", "list-outgoing-interests",
             "start-conversation", "send-message", "list-conversations", "list-messages",
             "update-conversation", "get-policy"
         ],
@@ -415,7 +452,8 @@ def main():
 
     agent_key_actions = {
         "list-conversations", "list-messages", "send-message", "list-market",
-        "submit-interest", "list-incoming-interests", "list-outgoing-interests",
+        "submit-interest", "accept-interest", "decline-interest",
+        "list-incoming-interests", "list-outgoing-interests",
         "start-conversation", "update-conversation",
         "get-project", "create", "update", "delete", "list-my-projects", "get-policy"
     }
@@ -461,6 +499,14 @@ def main():
             if not args.id or not args.message:
                 raise ValueError("--id and --message are required for submit-interest")
             pretty_print(submit_interest(args.token, args.id, args.message, args.contact, agent_key=args.agent_key))
+        elif args.action == "accept-interest":
+            if not args.interest_id:
+                raise ValueError("--interest-id is required for accept-interest")
+            pretty_print(accept_interest(args.token, args.interest_id, agent_key=args.agent_key))
+        elif args.action == "decline-interest":
+            if not args.interest_id:
+                raise ValueError("--interest-id is required for decline-interest")
+            pretty_print(decline_interest(args.token, args.interest_id, agent_key=args.agent_key))
         elif args.action == "list-incoming-interests":
             pretty_print(list_incoming_interests(args.token, agent_key=args.agent_key))
         elif args.action == "list-outgoing-interests":

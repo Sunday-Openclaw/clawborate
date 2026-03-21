@@ -188,6 +188,20 @@
                                 <option value="verbose">Verbose</option>
                             </select>
                         </label>
+                        <label class="flex items-center gap-3 bg-slate-900 border border-slate-700 rounded-xl p-4 md:col-span-2">
+                            <input id="policy-auto-accept-incoming" type="checkbox" class="rounded">
+                            <div>
+                                <div class="text-sm text-slate-200 font-medium">Auto-accept strong incoming interests</div>
+                                <div class="text-xs text-slate-500 mt-1">Let your agent accept incoming interest automatically when your policy allows it.</div>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-3 bg-slate-900 border border-slate-700 rounded-xl p-4 md:col-span-2">
+                            <input id="policy-require-human-approval-accept" type="checkbox" class="rounded">
+                            <div>
+                                <div class="text-sm text-slate-200 font-medium">Require human approval before accepting incoming interest</div>
+                                <div class="text-xs text-slate-500 mt-1">Keeps incoming interests visible for review instead of letting the patrol auto-accept them immediately.</div>
+                            </div>
+                        </label>
                     </div>
                     <div>
                         <div class="text-sm text-slate-300 mb-2">Always ask me first when…</div>
@@ -382,6 +396,8 @@
             document.getElementById('policy-priority-tags').value = '';
             document.getElementById('policy-constraints').value = '';
             document.getElementById('policy-working-style').value = '';
+            document.getElementById('policy-auto-accept-incoming').checked = false;
+            document.getElementById('policy-require-human-approval-accept').checked = true;
             document.querySelectorAll('.policy-trigger').forEach(box => {
                 box.checked = ['before_interest', 'before_contact_share', 'before_commitment', 'high_value_conversation'].includes(box.value);
             });
@@ -440,9 +456,12 @@
             document.getElementById('policy-reply-policy').value = data.reply_policy || 'draft_then_confirm';
             document.getElementById('policy-notification-mode').value = data.notification_mode || 'important_only';
             const prefs = data.collaborator_preferences || {};
+            const automationPrefs = prefs.automation || {};
             document.getElementById('policy-priority-tags').value = (prefs.priorityTags || []).join(', ');
             document.getElementById('policy-constraints').value = prefs.constraints || '';
             document.getElementById('policy-working-style').value = prefs.preferredWorkingStyle || '';
+            document.getElementById('policy-auto-accept-incoming').checked = Boolean(automationPrefs.autoAcceptIncomingInterest);
+            document.getElementById('policy-require-human-approval-accept').checked = automationPrefs.requireHumanApprovalForAcceptingInterest !== false;
             setSelectedTriggers(data.handoff_triggers || []);
         }
 
@@ -466,7 +485,11 @@
                 collaborator_preferences: {
                     priorityTags: document.getElementById('policy-priority-tags').value.split(',').map(s => s.trim()).filter(Boolean),
                     constraints: document.getElementById('policy-constraints').value.trim(),
-                    preferredWorkingStyle: document.getElementById('policy-working-style').value.trim()
+                    preferredWorkingStyle: document.getElementById('policy-working-style').value.trim(),
+                    automation: {
+                        autoAcceptIncomingInterest: document.getElementById('policy-auto-accept-incoming').checked,
+                        requireHumanApprovalForAcceptingInterest: document.getElementById('policy-require-human-approval-accept').checked
+                    }
                 },
                 notification_mode: document.getElementById('policy-notification-mode').value,
                 is_active: true,
@@ -649,6 +672,9 @@
           const savedKey = getSavedAgentKey();
           if (savedKey) {
             try {
+              await callAgentGateway('accept_interest', {
+                interest_id: interestId
+              });
               const result = await callAgentGateway('start_conversation', {
                 project_id: projectId,
                 interest_id: interestId,
@@ -660,7 +686,7 @@
                 return;
               }
             } catch (e) {
-              alert('Agent-key start-conversation failed; falling back to human session path.\n\n' + e.message);
+              alert('Agent-key accept/start failed; falling back to human session path.\n\n' + e.message);
             }
           }
           const accepted = await updateInterestStatus(interestId, 'accepted');
@@ -683,6 +709,18 @@
         }
 
         async function declineInterest(interestId) {
+          const savedKey = getSavedAgentKey();
+          if (savedKey) {
+            try {
+              await callAgentGateway('decline_interest', {
+                interest_id: interestId
+              });
+              await loadIncomingInterests();
+              return;
+            } catch (e) {
+              alert('Agent-key decline failed; falling back to human session path.\n\n' + e.message);
+            }
+          }
           await updateInterestStatus(interestId, 'declined');
         }
 
@@ -845,7 +883,9 @@
                     </div>
                     <div class="flex items-center gap-3">
                         <span class="text-xs px-2 py-1 rounded-full ${row.is_active ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-700 text-slate-300'}">${row.is_active ? 'active' : 'revoked'}</span>
-                        ${row.is_active ? `<button onclick="revokeAgentKey('${row.id}')" class="text-red-300 hover:text-red-200 text-sm font-semibold">Revoke</button>` : ''}
+                        ${row.is_active
+                            ? `<button onclick="revokeAgentKey('${row.id}')" class="text-red-300 hover:text-red-200 text-sm font-semibold">Revoke</button>`
+                            : `<button onclick="deleteAgentKey('${row.id}')" class="text-slate-300 hover:text-white text-sm font-semibold">Delete</button>`}
                     </div>
                 </div>
             `).join('');
@@ -893,6 +933,16 @@
             const { error } = await supabaseClient.from('agent_api_keys').update({ is_active: false }).eq('id', id);
             if (error) {
                 alert('Could not revoke key: ' + error.message);
+                return;
+            }
+            await loadAgentKeys();
+        }
+
+        async function deleteAgentKey(id) {
+            if (!confirm('Delete this revoked key from the dashboard list? This cannot be undone.')) return;
+            const { error } = await supabaseClient.from('agent_api_keys').delete().eq('id', id).eq('is_active', false);
+            if (error) {
+                alert('Could not delete key: ' + error.message);
                 return;
             }
             await loadAgentKeys();

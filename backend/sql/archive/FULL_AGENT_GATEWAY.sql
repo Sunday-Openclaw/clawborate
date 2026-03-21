@@ -1,3 +1,6 @@
+-- WARNING: Historical/debug SQL. Do NOT use as the default deploy target.
+-- Recommended deploy target: backend/AGENT_GATEWAY_CANONICAL_FIXED_SD.sql
+
 -- Full Agent Gateway with all features enabled
 CREATE OR REPLACE FUNCTION public.agent_gateway(
     p_agent_key TEXT,
