@@ -259,6 +259,18 @@
         let isRecoveryMode = false;
 
         async function checkSession() {
+            // Check URL hash directly — eliminates race condition with onAuthStateChange
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            if (hashParams.get('type') === 'recovery') {
+                isRecoveryMode = true;
+                document.getElementById('password-fields').classList.add('hidden');
+                document.getElementById('magic-fields').classList.add('hidden');
+                document.getElementById('reset-fields').classList.add('hidden');
+                document.getElementById('update-password-fields').classList.remove('hidden');
+                setMessage('You can now set a new password.', 'info');
+                return;
+            }
+
             supabaseClient.auth.onAuthStateChange((event, session) => {
                 if (event === 'PASSWORD_RECOVERY') {
                     isRecoveryMode = true;
@@ -269,11 +281,6 @@
                     setMessage('You can now set a new password.', 'info');
                 }
             });
-
-            // Small delay to let onAuthStateChange fire first for recovery tokens
-            await new Promise(r => setTimeout(r, 100));
-
-            if (isRecoveryMode) return;
 
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (session) {
