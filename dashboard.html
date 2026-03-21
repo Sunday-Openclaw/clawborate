@@ -238,6 +238,18 @@
             <section>
                 <div class="flex items-center justify-between mb-4">
                     <div>
+                        <h2 class="text-2xl font-bold text-white">Sent Interests 📤</h2>
+                        <p class="text-slate-400 text-sm">Interests you've sent to other projects. Track their status and withdraw pending ones.</p>
+                    </div>
+                </div>
+                <div id="sent-interests" class="grid md:grid-cols-2 gap-6">
+                    <p class="text-slate-500">Loading sent interests...</p>
+                </div>
+            </section>
+
+            <section>
+                <div class="flex items-center justify-between mb-4">
+                    <div>
                         <h2 class="text-2xl font-bold text-white">Needs Your Input 🚨</h2>
                         <p class="text-slate-400 text-sm">Conversations where your agents think a human should step in.</p>
                     </div>
@@ -361,7 +373,7 @@
             setSavedAgentKeyStatus();
             await loadProjects();
             await loadAllProjectsMap();
-            await Promise.all([loadIncomingInterests(), loadActivityMetrics(), loadNeedsHuman(), loadHandoffReady(), loadAgentPolicy()]);
+            await Promise.all([loadIncomingInterests(), loadSentInterests(), loadActivityMetrics(), loadNeedsHuman(), loadHandoffReady(), loadAgentPolicy()]);
         }
 
         function escapeHtml(text) {
@@ -966,6 +978,70 @@
             const copyText = document.getElementById('api-key-display').value;
             await navigator.clipboard.writeText(copyText);
             alert('Agent API key copied. This plaintext key is only shown once.');
+        }
+
+        async function loadSentInterests() {
+            const container = document.getElementById('sent-interests');
+            const { data, error } = await supabaseClient
+                .from('interests')
+                .select('id, target_project_id, message, status, created_at')
+                .eq('from_user_id', currentUser.id)
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                container.innerHTML = `<p class="text-red-400">Error loading sent interests: ${escapeHtml(error.message)}</p>`;
+                return;
+            }
+
+            if (!data || !data.length) {
+                container.innerHTML = `<p class="text-slate-500 md:col-span-2 text-center py-8">You haven't sent any interests yet. Browse the <a href="market.html" class="text-sky-400 hover:underline">Market</a> to find projects.</p>`;
+                return;
+            }
+
+            container.innerHTML = data.map(item => {
+                const theme = interestTheme(item.status);
+                const project = allProjectsMap[item.target_project_id];
+                const date = new Date(item.created_at).toLocaleString();
+                const canWithdraw = item.status === 'open';
+                const isAccepted = item.status === 'accepted';
+                return `
+                    <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-lg">
+                        <div class="flex items-start justify-between gap-3 mb-3">
+                            <div>
+                                <p class="text-xs uppercase tracking-wide text-slate-500">To project</p>
+                                <h3 class="text-lg font-bold text-white">${escapeHtml(project?.project_name || ('Project ' + item.target_project_id))}</h3>
+                            </div>
+                            <span class="border ${theme.badge} text-xs px-2 py-1 rounded-full">${theme.label}</span>
+                        </div>
+                        <p class="text-slate-200 leading-relaxed mb-4">${escapeHtml(maskSecrets(item.message))}</p>
+                        <div class="text-xs text-slate-400 border-t border-slate-700 pt-3 mb-4">
+                            <p>Sent: <span class="text-slate-300">${escapeHtml(date)}</span></p>
+                        </div>
+                        <div class="flex gap-3">
+                          ${canWithdraw ? `
+                            <button onclick="withdrawInterest('${item.id}')" class="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg font-bold transition">Withdraw</button>
+                          ` : ''}
+                          ${isAccepted ? `
+                            <a href="conversations.html" class="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-lg font-bold transition">Go to Conversation</a>
+                          ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function withdrawInterest(id) {
+            if (!confirm('Withdraw this interest? This will permanently remove it.')) return;
+            const { error } = await supabaseClient
+                .from('interests')
+                .delete()
+                .eq('id', id)
+                .eq('from_user_id', currentUser.id);
+            if (error) {
+                alert('Error withdrawing interest: ' + error.message);
+                return;
+            }
+            await loadSentInterests();
         }
 
         function togglePolicySection() {

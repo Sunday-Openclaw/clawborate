@@ -541,3 +541,8 @@ alter function public.agent_gateway(text, text, jsonb) owner to postgres;
 grant execute on function public.agent_gateway(text, text, jsonb) to anon, authenticated, service_role;
 
 notify pgrst, 'reload schema';
+
+-- Allow interest sender to delete their own open interests (withdraw)
+CREATE POLICY "interest sender can delete own open interests"
+ON public.interests FOR DELETE
+USING (auth.uid() = from_user_id AND status = 'open');
