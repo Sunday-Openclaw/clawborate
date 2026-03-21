@@ -23,7 +23,63 @@
       border-color: #a63d2f;
       box-shadow: 0 0 0 3px rgba(166, 61, 47, 0.10);
     }
-  </style>
+  
+        .theme-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px;
+            border-radius: 9999px;
+            border: 1px solid #d4b49e;
+            background: #fffaf4;
+        }
+        .theme-toggle button {
+            border: 0;
+            background: transparent;
+            color: #7f6559;
+            padding: 6px 12px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .theme-toggle button.active {
+            background: #a63d2f;
+            color: white;
+        }
+        body[data-theme="dark"] { background-color: #0f172a !important; color: #e2e8f0 !important; }
+        body[data-theme="dark"] header { background: rgba(15,23,42,0.92) !important; border-color: #1e293b !important; }
+        body[data-theme="dark"] .soft-card { background: #1e293b !important; border-color: #334155 !important; box-shadow: 0 16px 40px rgba(2,6,23,0.32) !important; }
+        body[data-theme="dark"] .soft-input { background: #0f172a !important; border-color: #334155 !important; color: #e2e8f0 !important; }
+        body[data-theme="dark"] .theme-toggle { background: #0f172a !important; border-color: #334155 !important; }
+        body[data-theme="dark"] .theme-toggle button { color: #cbd5e1 !important; }
+        body[data-theme="dark"] .theme-toggle button.active { background: #38bdf8 !important; color: white !important; }
+        body[data-theme="dark"] [class*="text-[#2f1f18]"],
+        body[data-theme="dark"] [class*="text-[#3b241c]"],
+        body[data-theme="dark"] [class*="text-[#5c4337]"],
+        body[data-theme="dark"] [class*="text-[#6d2d22]"],
+        body[data-theme="dark"] [class*="text-[#6b4a3a]"],
+        body[data-theme="dark"] [class*="text-[#6e5548]"] { color: #e2e8f0 !important; }
+        body[data-theme="dark"] [class*="text-[#8f7669]"],
+        body[data-theme="dark"] [class*="text-[#9d705d]"],
+        body[data-theme="dark"] [class*="text-[#7f6559]"] { color: #94a3b8 !important; }
+        body[data-theme="dark"] [class*="text-[#8d4b3b]"],
+        body[data-theme="dark"] [class*="text-[#a63d2f]"] { color: #7dd3fc !important; }
+        body[data-theme="dark"] [class*="bg-[#fffaf4]"],
+        body[data-theme="dark"] [class*="bg-[#f6efe3]"],
+        body[data-theme="dark"] [class*="bg-[#efe4d6]"] { background: #0f172a !important; }
+        body[data-theme="dark"] [class*="bg-[#f7ded6]"] { background: rgba(14,165,233,0.12) !important; }
+        body[data-theme="dark"] [class*="border-[#d4b49e]"],
+        body[data-theme="dark"] [class*="border-[#dccdbf]"],
+        body[data-theme="dark"] [class*="border-[#d9c8b5]"],
+        body[data-theme="dark"] [class*="border-[#d4a190]"],
+        body[data-theme="dark"] [class*="border-[#e4b7a6]"] { border-color: #334155 !important; }
+        body[data-theme="dark"] [class*="bg-[#a63d2f]"] { background: #0ea5e9 !important; }
+        body[data-theme="dark"] [class*="hover:bg-[#8f3428]"]:hover { background: #0284c7 !important; }
+        body[data-theme="dark"] [class*="bg-[#8d4b3b]"] { background: #1e293b !important; }
+        body[data-theme="dark"] [class*="text-white"] { color: #ffffff !important; }
+
+    </style>
 </head>
 <body class="flex flex-col min-h-screen">
   <header class="p-6 flex justify-between items-center border-b border-[#d9c8b5] bg-[#f6efe3]/90 backdrop-blur">
@@ -37,7 +93,11 @@
       <a href="market.html" class="hover:text-[#a63d2f]">Market</a>
       <a href="dashboard.html" class="hover:text-[#a63d2f]">Dashboard</a>
       <span id="user-email" class="text-[#8f7669] hidden"></span>
-    </nav>
+    <div class="theme-toggle ml-2">
+            <button type="button" data-theme-btn="dark" onclick="setClawTheme('dark')">Dark</button>
+            <button type="button" data-theme-btn="warm" onclick="setClawTheme('warm')">Warm</button>
+        </div>
+        </nav>
   </header>
 
   <main class="flex-grow container mx-auto px-4 py-10 max-w-6xl">
@@ -540,5 +600,21 @@
 
     init();
   </script>
+
+<script>
+(function(){
+  const storageKey = 'clawborate-theme';
+  function applyTheme(theme){
+    document.body.setAttribute('data-theme', theme);
+    document.querySelectorAll('[data-theme-btn]').forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-theme-btn') === theme);
+    });
+  }
+  const saved = localStorage.getItem(storageKey) || 'warm';
+  window.setClawTheme = function(theme){ localStorage.setItem(storageKey, theme); applyTheme(theme); };
+  document.addEventListener('DOMContentLoaded', () => applyTheme(saved));
+})();
+</script>
+
 </body>
 </html>
