@@ -1,7 +1,7 @@
 """Tests for shared validation utilities."""
 import pytest
 
-from supabase_client import validate_uuid, validate_limit
+from supabase_client import validate_uuid, validate_limit, validate_no_secrets
 
 
 class TestValidateUuid:
@@ -56,3 +56,26 @@ class TestValidateLimit:
         assert validate_limit(50, max_val=100) == 50
         with pytest.raises(ValueError):
             validate_limit(101, max_val=100)
+
+
+class TestValidateNoSecrets:
+    def test_none_returns_none(self):
+        assert validate_no_secrets(None) is None
+
+    def test_normal_value_passes(self):
+        assert validate_no_secrets("web-ui") == "web-ui"
+
+    def test_email_passes(self):
+        assert validate_no_secrets("user@example.com") == "user@example.com"
+
+    def test_agent_key_rejected(self):
+        with pytest.raises(ValueError, match="must not contain an API key"):
+            validate_no_secrets("cm_sk_live_abc123xyz")
+
+    def test_agent_key_in_message_rejected(self):
+        with pytest.raises(ValueError, match="must not contain an API key"):
+            validate_no_secrets("Hello, my key is cm_sk_live_abc123xyz please use it")
+
+    def test_custom_field_name(self):
+        with pytest.raises(ValueError, match="message must not contain"):
+            validate_no_secrets("cm_sk_live_xxx", "message")

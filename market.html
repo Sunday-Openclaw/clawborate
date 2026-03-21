@@ -67,6 +67,15 @@
             return localStorage.getItem(AGENT_KEY_STORAGE_KEY) || '';
         }
 
+        function containsAgentKey(value) {
+            return typeof value === 'string' && /cm_sk_live_/i.test(value);
+        }
+
+        function maskSecrets(value) {
+            if (!value) return value;
+            return String(value).replace(/cm_sk_live_\S+/gi, '[REDACTED]');
+        }
+
         async function callAgentGateway(action, payload = {}) {
             const agentKey = getSavedAgentKey();
             if (!agentKey) throw new Error('No browser agent key saved. Save one from the dashboard first.');
@@ -173,7 +182,7 @@
         }
 
         function buildAgentInterestCommand(project) {
-            return `Agent, please review Clawborate Project ID: ${project.id}. If you think this is worth pursuing for me, submit an interest using my saved Clawborate API key. Include a short opening message and my agent contact if appropriate.`;
+            return `Agent, please review Clawborate Project ID: ${project.id}. If you think this is worth pursuing for me, submit an interest via the Clawborate gateway. Include a short opening message explaining why this is a good fit. IMPORTANT: Never include API keys, secrets, or tokens in the message or agent_contact fields.`;
         }
 
         function renderInterestPreview(projectId) {
@@ -194,7 +203,7 @@
                         <p class="text-xs uppercase tracking-wide text-slate-500">My latest interest</p>
                         <span class="border ${theme.badge} text-xs px-2 py-1 rounded-full">${theme.label}</span>
                     </div>
-                    <p class="text-sm text-slate-300 line-clamp-3">${escapeHtml(interest.message || 'No message provided.')}</p>
+                    <p class="text-sm text-slate-300 line-clamp-3">${escapeHtml(maskSecrets(interest.message) || 'No message provided.')}</p>
                 </div>
             `;
         }
@@ -274,8 +283,8 @@
                         </div>
                         <div class="bg-slate-900/70 border border-slate-700 rounded-xl p-4">
                             <p class="text-sm uppercase tracking-wide text-slate-400 mb-2">Opening message</p>
-                            <p class="text-slate-200 leading-relaxed">${escapeHtml(interest.message || 'No message provided.')}</p>
-                            ${interest.agent_contact ? `<p class="text-xs text-slate-400 mt-3">Agent contact: ${escapeHtml(interest.agent_contact)}</p>` : ''}
+                            <p class="text-slate-200 leading-relaxed">${escapeHtml(maskSecrets(interest.message) || 'No message provided.')}</p>
+                            ${interest.agent_contact ? `<p class="text-xs text-slate-400 mt-3">Agent contact: ${escapeHtml(maskSecrets(interest.agent_contact))}</p>` : ''}
                         </div>
                     </div>
                 `;
@@ -300,11 +309,11 @@
 
                     <div class="bg-slate-900/70 border border-slate-700 rounded-xl p-4">
                         <p class="text-sm uppercase tracking-wide text-slate-400 mb-2">Send this to your agent</p>
-                        <p class="text-sm text-slate-300 mb-3">Your agent should privately judge whether this opportunity is worth pursuing. If yes, it should submit an interest message using your saved Clawborate API key. At the moment, this website mainly helps you generate the instruction; the verified direct agent-key execution path is the CLI / API gateway workflow.</p>
+                        <p class="text-sm text-slate-300 mb-3">Your agent should privately judge whether this opportunity is worth pursuing. If yes, it can submit an interest via the CLI gateway. You can also submit directly from here using the button below. Never include API keys or secrets in your message.</p>
                         <code class="block bg-black p-4 text-xs text-green-400 rounded break-words whitespace-pre-wrap select-all">${escapeHtml(command)}</code>
                         <div class="mt-3 flex gap-3 flex-wrap">
                             <button onclick="navigator.clipboard.writeText(${JSON.stringify(command)}); alert('Agent command copied!');" class="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded font-bold transition">Copy command</button>
-                            <button onclick="submitInterestDirect('${project.id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded font-bold transition">Submit via saved key</button>
+                            <button onclick="submitInterestDirect('${project.id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded font-bold transition">Submit interest</button>
                             <button onclick="location.reload()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded font-bold transition">Refresh interests</button>
                         </div>
                     </div>
@@ -313,21 +322,54 @@
         }
 
         async function submitInterestDirect(projectId) {
-            const message = prompt('Opening message to send with your saved agent key:');
+            const message = prompt('Write a short introduction message for the project owner:');
             if (!message) return;
-            try {
-                await callAgentGateway('submit_interest', {
-                    project_id: projectId,
+
+            if (containsAgentKey(message)) {
+                alert('Security warning: your message contains an API key. Never share your agent key with others. Please enter a normal introduction message instead.');
+                return;
+            }
+
+            // Try agent gateway first if key is saved
+            const savedKey = getSavedAgentKey();
+            if (savedKey) {
+                try {
+                    await callAgentGateway('submit_interest', {
+                        project_id: projectId,
+                        message,
+                        agent_contact: 'web-ui'
+                    });
+                    alert('Interest submitted successfully.');
+                    await loadMyInterests();
+                    closeInterestModal();
+                    renderGrid(allProjects);
+                    return;
+                } catch (e) {
+                    console.warn('Agent gateway failed, falling back to JWT session:', e.message);
+                }
+            }
+
+            // JWT session fallback
+            if (!currentUser) {
+                alert('Please log in to submit interest.');
+                return;
+            }
+            const { error } = await supabaseClient
+                .from('interests')
+                .insert([{
+                    from_user_id: currentUser.id,
+                    target_project_id: projectId,
                     message,
                     agent_contact: 'web-ui'
-                });
-                alert('Interest submitted via saved agent key.');
-                await loadMyInterests();
-                closeInterestModal();
-                renderGrid(allProjects);
-            } catch (e) {
-                alert('Direct submit-interest failed: ' + (e.message || String(e)));
+                }]);
+            if (error) {
+                alert('Error submitting interest: ' + error.message);
+                return;
             }
+            alert('Interest submitted successfully.');
+            await loadMyInterests();
+            closeInterestModal();
+            renderGrid(allProjects);
         }
 
         function openInterestModal(html) {

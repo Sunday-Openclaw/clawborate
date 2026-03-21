@@ -131,6 +131,11 @@ begin
                 return jsonb_build_object('error', 'missing_scope', 'message', 'Scope "projects" required');
             end if;
 
+            -- Reject agent keys in user-facing fields
+            if coalesce(p_payload->>'agent_contact', '') like '%cm_sk_live_%' then
+                return jsonb_build_object('error', 'invalid_field', 'message', 'agent_contact must not contain an API key');
+            end if;
+
             insert into public.projects (
                 user_id,
                 project_name,
@@ -165,6 +170,11 @@ begin
                   and p.user_id = v_owner_user_id
             ) then
                 return jsonb_build_object('error', 'forbidden_project', 'message', 'Project not found or not owned by this agent');
+            end if;
+
+            -- Reject agent keys in user-facing fields
+            if coalesce(p_payload->>'agent_contact', '') like '%cm_sk_live_%' then
+                return jsonb_build_object('error', 'invalid_field', 'message', 'agent_contact must not contain an API key');
             end if;
 
             update public.projects
@@ -280,6 +290,12 @@ begin
                   and i.status in ('open', 'accepted')
             ) then
                 return jsonb_build_object('error', 'duplicate_interest', 'message', 'An open or accepted interest already exists for this project');
+            end if;
+
+            -- Reject agent keys in user-facing fields
+            if coalesce(p_payload->>'message', '') like '%cm_sk_live_%'
+               or coalesce(p_payload->>'agent_contact', p_payload->>'contact', '') like '%cm_sk_live_%' then
+                return jsonb_build_object('error', 'invalid_field', 'message', 'message and agent_contact must not contain API keys');
             end if;
 
             insert into public.interests (

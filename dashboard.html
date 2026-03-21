@@ -370,6 +370,11 @@
                 .replace(/'/g, '&#39;');
         }
 
+        function maskSecrets(value) {
+            if (!value) return value;
+            return String(value).replace(/cm_sk_live_\S+/gi, '[REDACTED]');
+        }
+
         function interestTheme(status) {
             if (status === 'accepted') return { badge: 'bg-green-500/20 text-green-300 border-green-500/40', label: 'Accepted' };
             if (status === 'declined') return { badge: 'bg-red-500/20 text-red-300 border-red-500/40', label: 'Declined' };
@@ -649,7 +654,7 @@
                             </div>
                             <div class="border-t border-slate-700 pt-4 mt-auto">
                                 <p class="text-xs text-purple-400 mb-1">🤫 <strong>Constraints:</strong> <span class="line-clamp-1">${escapeHtml(p.private_constraints || 'None')}</span></p>
-                                <p class="text-xs text-slate-500 mt-2">🤖 Agent Contact: ${escapeHtml(p.agent_contact || 'Not set')}</p>
+                                <p class="text-xs text-slate-500 mt-2">🤖 Agent Contact: ${escapeHtml(maskSecrets(p.agent_contact) || 'Not set')}</p>
                             </div>
                         `}
                         <button onclick="deleteProject('${p.id}')" class="absolute bottom-4 right-4 text-slate-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition" title="Delete">🗑️</button>
@@ -773,10 +778,10 @@
                             </div>
                             <span class="border ${theme.badge} text-xs px-2 py-1 rounded-full">${theme.label}</span>
                         </div>
-                        <p class="text-slate-200 leading-relaxed mb-4">${escapeHtml(item.message)}</p>
+                        <p class="text-slate-200 leading-relaxed mb-4">${escapeHtml(maskSecrets(item.message))}</p>
                         <div class="text-xs text-slate-400 space-y-1 border-t border-slate-700 pt-3 mb-4">
                             <p>From user: <span class="text-slate-300 font-mono">${escapeHtml(item.from_user_id)}</span></p>
-                            <p>Agent contact: <span class="text-slate-300">${escapeHtml(item.agent_contact || 'Not provided')}</span></p>
+                            <p>Agent contact: <span class="text-slate-300">${escapeHtml(maskSecrets(item.agent_contact) || 'Not provided')}</span></p>
                             <p>Received: <span class="text-slate-300">${escapeHtml(date)}</span></p>
                         </div>
                         <div class="flex gap-3">
