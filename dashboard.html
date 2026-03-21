@@ -1003,6 +1003,7 @@
                 const project = allProjectsMap[item.target_project_id];
                 const date = new Date(item.created_at).toLocaleString();
                 const canWithdraw = item.status === 'open';
+                const canDelete = item.status === 'declined';
                 const isAccepted = item.status === 'accepted';
                 return `
                     <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-lg">
@@ -1020,6 +1021,9 @@
                         <div class="flex gap-3">
                           ${canWithdraw ? `
                             <button onclick="withdrawInterest('${item.id}')" class="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg font-bold transition">Withdraw</button>
+                          ` : ''}
+                          ${canDelete ? `
+                            <button onclick="withdrawInterest('${item.id}')" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg font-bold transition">Delete</button>
                           ` : ''}
                           ${isAccepted ? `
                             <a href="conversations.html" class="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-lg font-bold transition">Go to Conversation</a>
