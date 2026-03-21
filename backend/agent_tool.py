@@ -10,9 +10,9 @@ from supabase_client import (
     get_current_user,
     require_config,
     rpc_headers,
+    validate_no_secrets,
 )
 from supabase_client import (
-    validate_no_secrets,
     validate_uuid as _validate_uuid,
 )
 
