@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Clawborate Skill">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="48" fill="url(#bg)"/>
+  <path d="M70 157c28-52 85-80 114-86-19 19-24 34-24 46 15-10 32-14 50-14-11 17-24 33-51 45 13 4 24 12 33 28-35 0-58-8-76-24-15 11-30 18-46 18z" fill="#38bdf8"/>
+</svg>

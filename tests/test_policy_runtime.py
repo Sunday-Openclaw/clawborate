@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from policy_runtime import db_policy_to_runtime_bundle, should_run_market_patrol
+from skill_runtime.policy_runtime import db_policy_to_runtime_bundle, should_run_market_patrol
 
 
 def test_db_policy_to_runtime_bundle_maps_policy_fields_and_overrides_auto_send():
@@ -81,3 +81,4 @@ def test_should_run_market_patrol_handles_manual_messages_inactive_and_due_windo
         (now - timedelta(minutes=20)).isoformat(),
         now=now,
     ) == (False, "not_due")
+

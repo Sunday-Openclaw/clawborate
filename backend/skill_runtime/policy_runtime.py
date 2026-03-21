@@ -9,7 +9,8 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, cast
 
-from clawmatch_autopilot import DEFAULT_POLICY, deep_merge
+from .autopilot_core import DEFAULT_POLICY, deep_merge
+
 
 DEFAULT_HANDOFF_TRIGGERS = [
     "before_interest",
@@ -55,7 +56,10 @@ def _copy_default_db_policy() -> dict[str, Any]:
 def _normalize_text_list(value: Any) -> list[str]:
     if value is None:
         return []
-    items = value if isinstance(value, list) else re.split(r"[,;\n]+", str(value))
+    if isinstance(value, list):
+        items = value
+    else:
+        items = re.split(r"[,;\n]+", str(value))
 
     normalized = []
     seen = set()
@@ -81,13 +85,11 @@ def coerce_db_policy_row(
     if policy_row:
         row.update({k: v for k, v in policy_row.items() if k != "collaborator_preferences"})
 
-    prefs: dict[str, Any] = copy.deepcopy(cast(dict[str, Any], DEFAULT_DB_POLICY["collaborator_preferences"]))
+    prefs = copy.deepcopy(DEFAULT_DB_POLICY["collaborator_preferences"])
     if policy_row and isinstance(policy_row.get("collaborator_preferences"), dict):
-        policy_prefs = cast(dict[str, Any], policy_row["collaborator_preferences"])
-        prefs.update(policy_prefs)
-        automation = policy_prefs.get("automation")
-        if isinstance(automation, dict):
-            prefs["automation"].update(automation)
+        prefs.update(policy_row["collaborator_preferences"])
+        if isinstance(policy_row["collaborator_preferences"].get("automation"), dict):
+            prefs["automation"].update(policy_row["collaborator_preferences"]["automation"])
 
     row["collaborator_preferences"] = prefs
     raw_handoff_triggers = row.get("handoff_triggers")

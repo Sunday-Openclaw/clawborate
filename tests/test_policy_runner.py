@@ -1,14 +1,14 @@
 import json
 from datetime import datetime, timezone
 
-import policy_runner
+import skill_runtime.runner as policy_runner
 
 
 def test_run_once_skips_manual_and_messages_scope_projects(tmp_path, monkeypatch):
     monkeypatch.setattr(
         policy_runner,
         "list_my_projects",
-        lambda agent_key, limit=200: [
+        lambda *args, **kwargs: [
             {"id": "project-manual", "project_name": "Manual", "user_id": "owner-1"},
             {"id": "project-messages", "project_name": "Messages", "user_id": "owner-1"},
         ],
@@ -16,10 +16,10 @@ def test_run_once_skips_manual_and_messages_scope_projects(tmp_path, monkeypatch
     monkeypatch.setattr(
         policy_runner,
         "get_policy",
-        lambda agent_key, project_id=None: {
+        lambda *args, **kwargs: {
             "project-manual": {"market_patrol_interval": "manual", "patrol_scope": "market"},
             "project-messages": {"market_patrol_interval": "10m", "patrol_scope": "messages"},
-        }[project_id],
+        }[kwargs.get("project_id")],
     )
     monkeypatch.setattr(policy_runner, "list_market", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("unexpected")))
     monkeypatch.setattr(
@@ -82,13 +82,13 @@ def test_run_once_executes_policy_and_writes_reports(tmp_path, monkeypatch):
     monkeypatch.setattr(
         policy_runner,
         "list_my_projects",
-        lambda agent_key, limit=200: [{"id": "project-1", "project_name": "Runner Source", "user_id": "owner-1"}],
+        lambda *args, **kwargs: [{"id": "project-1", "project_name": "Runner Source", "user_id": "owner-1"}],
     )
     monkeypatch.setattr(
         policy_runner,
         "get_policy",
-        lambda agent_key, project_id=None: {
-            "project_id": project_id,
+        lambda *args, **kwargs: {
+            "project_id": kwargs.get("project_id"),
             "owner_user_id": "owner-1",
             "market_patrol_interval": "10m",
             "message_patrol_interval": "10m",
@@ -108,17 +108,17 @@ def test_run_once_executes_policy_and_writes_reports(tmp_path, monkeypatch):
     monkeypatch.setattr(
         policy_runner,
         "list_market",
-        lambda agent_key=None, limit=20: [{"id": "market-1"}, {"id": "market-2"}],
+        lambda *args, **kwargs: [{"id": "market-1"}, {"id": "market-2"}],
     )
     monkeypatch.setattr(
         policy_runner,
         "list_outgoing_interests",
-        lambda agent_key=None: [{"id": "existing-interest", "target_project_id": "target-existing", "status": "open"}],
+        lambda *args, **kwargs: [{"id": "existing-interest", "target_project_id": "target-existing", "status": "open"}],
     )
     monkeypatch.setattr(
         policy_runner,
         "list_conversations",
-        lambda agent_key=None: [{"id": "conv-existing", "project_id": "target-existing", "status": "active"}],
+        lambda *args, **kwargs: [{"id": "conv-existing", "project_id": "target-existing", "status": "active"}],
     )
 
     def fake_choose(me, market, open_interests, conversations, policy):
@@ -208,7 +208,7 @@ def test_run_once_executes_policy_and_writes_reports(tmp_path, monkeypatch):
     monkeypatch.setattr(
         policy_runner,
         "submit_interest",
-        lambda token=None, project_id=None, message=None, contact=None, agent_key=None: submitted_interests.append(
+        lambda agent_key=None, project_id=None, message=None, contact=None, **kwargs: submitted_interests.append(
             {
                 "project_id": project_id,
                 "message": message,
@@ -221,7 +221,7 @@ def test_run_once_executes_policy_and_writes_reports(tmp_path, monkeypatch):
     monkeypatch.setattr(
         policy_runner,
         "start_conversation",
-        lambda token=None, project_id=None, interest_id=None, receiver_user_id=None, agent_key=None: started_conversations.append(
+        lambda agent_key=None, project_id=None, interest_id=None, receiver_user_id=None, **kwargs: started_conversations.append(
             {
                 "project_id": project_id,
                 "interest_id": interest_id,

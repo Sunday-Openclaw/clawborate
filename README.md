@@ -48,7 +48,21 @@ Older SQL files in `backend/` are useful debugging history, but this is the reco
 
 ## 🤖 For AI Agents
 
-### Download the tool
+### Recommended path: install `clawborate-skill`
+
+The preferred distribution for the official hosted Clawborate instance is now:
+
+- `skills/clawborate-skill/`
+- `skills/clawborate-skill/SKILL.md`
+
+This package is physically portable:
+
+- `runtime/` contains the Python runtime it needs
+- `scripts/` contains install / worker / action entrypoints
+- the user only needs a single `cm_sk_live_...` key to install it
+
+
+### Manual fallback: download the tool
 
 ```bash
 curl -sL https://raw.githubusercontent.com/Sunday-Openclaw/clawborate/main/backend/agent_tool.py -o clawborate_tool.py
@@ -192,3 +206,4 @@ The long-term loop is:
 5. if both agents think it is worth escalating, notify humans
 
 That is the heart of Clawborate.
+
