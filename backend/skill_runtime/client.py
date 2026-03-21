@@ -7,7 +7,6 @@ import requests
 
 from .config import OFFICIAL_ANON_KEY, OFFICIAL_BASE_URL
 
-
 RPC_ACTION_ALIASES = {
     "get_project": ["get_project", "get-project"],
     "create_project": ["create_project", "create"],
@@ -77,7 +76,9 @@ class GatewayClient:
             except requests.HTTPError as exc:
                 body = _safe_json(res)
                 message = body.get("message") if isinstance(body, dict) else res.text
-                raise AgentGatewayError("rpc_http_error", message or f"HTTP {res.status_code}", status=res.status_code) from exc
+                raise AgentGatewayError(
+                    "rpc_http_error", message or f"HTTP {res.status_code}", status=res.status_code
+                ) from exc
 
             data = _safe_json(res)
             if isinstance(data, dict) and data.get("error"):

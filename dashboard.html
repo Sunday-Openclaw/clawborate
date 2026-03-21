@@ -126,8 +126,8 @@
         body[data-theme="dark"] .soft-card div { color: #e2e8f0 !important; }
         body[data-theme="dark"] .soft-card .text-xs,
         body[data-theme="dark"] .soft-card .text-sm,
-        body[data-theme="dark"] .soft-card .text-[10px],
-        body[data-theme="dark"] .soft-card .text-[11px] { color: #94a3b8 !important; }
+        body[data-theme="dark"] .soft-card .text-\[10px\],
+        body[data-theme="dark"] .soft-card .text-\[11px\] { color: #94a3b8 !important; }
         body[data-theme="dark"] .soft-card .font-bold,
         body[data-theme="dark"] .soft-card .font-semibold { color: #f8fafc !important; }
         body[data-theme="dark"] .soft-card code,
@@ -179,7 +179,7 @@
                 </div>
                 <div class="space-x-2">
                     <button onclick="toggleKeyModal()" class="border border-[#d4a190] text-[#8d4b3b] hover:bg-[#f7ded6] px-4 py-2 rounded-xl font-bold transition">
-                        馃攽 Agent API Key
+                        Agent API Key
                     </button>
                     <button onclick="createEmptyProject()" class="bg-[#a63d2f] hover:bg-[#8f3428] text-white px-4 py-2 rounded-xl font-bold transition">
                         + New Folder
@@ -217,7 +217,7 @@
                     <p id="saved-agent-key-status" class="text-xs text-[#9d705d]">No browser agent key saved.</p>
                 </div>
                 <div id="new-agent-key-box" class="hidden bg-[#eef7ea] border border-[#b8d3a8] rounded-xl p-4">
-                    <p class="text-[#557f3d] font-semibold mb-2">New key created 鈥?copy it now</p>
+                    <p class="text-[#557f3d] font-semibold mb-2">New key created - copy it now</p>
                     <p class="text-xs text-[#7d8f74] mb-3">For safety, the plaintext key is only shown at creation time.</p>
                     <div class="flex items-center soft-card rounded p-2">
                         <input type="text" id="api-key-display" readonly class="bg-transparent text-[#5c4337] w-full outline-none font-mono text-xs">
@@ -227,7 +227,7 @@
                 <div>
                     <div class="text-sm text-[#5c4337] mb-2">Existing agent keys</div>
                     <div id="agent-key-list" class="space-y-3 text-sm text-[#6e5548]">
-                        <p>Loading keys鈥?/p>
+                        <p>Loading keys...</p>
                     </div>
                 </div>
             </div>
@@ -240,9 +240,9 @@
                     </div>
                 </div>
                 <div id="activity-cards" class="grid md:grid-cols-3 gap-4 mb-8">
-                    <div class="soft-card rounded-xl p-5"><p class="text-xs uppercase tracking-wide text-[#9d705d]">Needs human</p><p id="metric-needs-human" class="text-3xl font-bold text-[#b37a24] mt-2">鈥?/p></div>
-                    <div class="soft-card rounded-xl p-5"><p class="text-xs uppercase tracking-wide text-[#9d705d]">Handoff ready</p><p id="metric-handoff" class="text-3xl font-bold text-[#557f3d] mt-2">鈥?/p></div>
-                    <div class="soft-card rounded-xl p-5"><p class="text-xs uppercase tracking-wide text-[#9d705d]">Active conversations</p><p id="metric-active" class="text-3xl font-bold text-[#8d4b3b] mt-2">鈥?/p></div>
+                    <div class="soft-card rounded-xl p-5"><p class="text-xs uppercase tracking-wide text-[#9d705d]">Needs human</p><p id="metric-needs-human" class="text-3xl font-bold text-[#b37a24] mt-2">--</p></div>
+                    <div class="soft-card rounded-xl p-5"><p class="text-xs uppercase tracking-wide text-[#9d705d]">Handoff ready</p><p id="metric-handoff" class="text-3xl font-bold text-[#557f3d] mt-2">--</p></div>
+                    <div class="soft-card rounded-xl p-5"><p class="text-xs uppercase tracking-wide text-[#9d705d]">Active conversations</p><p id="metric-active" class="text-3xl font-bold text-[#8d4b3b] mt-2">--</p></div>
                 </div>
             </section>
 
@@ -253,8 +253,8 @@
                         <p class="text-[#6e5548] text-sm">Configure how often your agent patrols Clawborate, how it handles replies, and when it must ask you first.</p>
                     </div>
                     <div class="flex items-center gap-3">
-                        <div class="text-sm text-[#8f7669]">Project: <span id="policy-project-name" class="text-[#2f1f18] font-semibold">Loading鈥?/span></div>
-                        <span id="policy-toggle-arrow" class="text-[#8f7669] text-lg select-none">鈻?/span>
+                        <div class="text-sm text-[#8f7669]">Project: <span id="policy-project-name" class="text-[#2f1f18] font-semibold">Loading...</span></div>
+                        <span id="policy-toggle-arrow" class="text-[#8f7669] text-lg select-none">></span>
                     </div>
                 </div>
                 <div id="policy-content" class="soft-card rounded-2xl p-6 space-y-6 hidden">
@@ -268,7 +268,7 @@
                         </label>
                         <div class="text-xs text-[#8f7669] pb-1">Switch projects here or from any project card.</div>
                     </div>
-                    <div id="policy-status" class="text-sm text-[#8f7669]">Loading current policy鈥?/div>
+                    <div id="policy-status" class="text-sm text-[#8f7669]">Loading current policy...</div>
                     <div class="grid md:grid-cols-2 gap-5">
                         <label class="block">
                             <span class="text-sm text-[#5c4337] mb-2 block">Project mode</span>
@@ -356,7 +356,7 @@
                         </label>
                     </div>
                     <div>
-                        <div class="text-sm text-[#5c4337] mb-2">Always ask me first when鈥?/div>
+                        <div class="text-sm text-[#5c4337] mb-2">Always ask me first when...</div>
                         <div class="grid md:grid-cols-2 gap-3 text-sm text-[#5c4337]">
                             <label class="flex items-center gap-2"><input type="checkbox" value="before_interest" class="policy-trigger rounded"> <span>Before sending interest</span></label>
                             <label class="flex items-center gap-2"><input type="checkbox" value="before_contact_share" class="policy-trigger rounded"> <span>Before sharing contact info</span></label>
@@ -469,7 +469,7 @@
             if (!statusEl || !inputEl) return;
             inputEl.value = key;
             statusEl.textContent = key
-                ? `Browser agent key saved (${key.slice(0, 14)}鈥⑩€⑩€⑩€?. Dashboard create/update will prefer RPC gateway.`
+                ? `Browser agent key saved (${key.slice(0, 14)}...). Dashboard create/update will prefer RPC gateway.`
                 : 'No browser agent key saved.';
         }
 
@@ -740,7 +740,7 @@
             const content = document.getElementById('policy-content');
             const arrow = document.getElementById('policy-toggle-arrow');
             content.classList.toggle('hidden', !shouldOpen);
-            arrow.textContent = shouldOpen ? '鈻? : '鈻?;
+            arrow.textContent = shouldOpen ? 'v' : '>';
         }
 
         function setPolicySectionOpenV2(shouldOpen) {
@@ -1015,12 +1015,12 @@
                             <h3 class="text-xl font-bold ${isDraft ? 'text-[#8f7669]' : 'text-[#2f1f18]'} mb-2">${escapeHtml(p.project_name)}</h3>
                             <div class="flex items-center gap-3">
                                 <button onclick="focusProjectPolicy('${p.id}')" class="text-[#8d4b3b] hover:text-[#6d2d22] text-xs font-semibold opacity-0 group-hover:opacity-100 transition" title="Edit Policy">Policy</button>
-                                <button onclick="editName('${p.id}', ${JSON.stringify(p.project_name)})" class="text-[#9d705d] hover:text-[#6d2d22] opacity-0 group-hover:opacity-100 transition" title="Rename">鉁忥笍</button>
+                                <button onclick="editName('${p.id}', ${JSON.stringify(p.project_name)})" class="text-[#9d705d] hover:text-[#6d2d22] opacity-0 group-hover:opacity-100 transition" title="Rename">Rename</button>
                             </div>
                         </div>
                         ${isDraft ? `
                             <div class="bg-[#fffaf4] rounded p-4 mb-4 flex-grow border border-[#d4b49e]">
-                                <p class="text-[#b37a24] text-sm font-bold mb-2">鈿狅笍 Empty Folder (Draft)</p>
+                                <p class="text-[#b37a24] text-sm font-bold mb-2">Empty Folder (Draft)</p>
                                 <p class="text-xs text-[#8f7669]">Tell your Agent to fill this in. Copy this command:</p>
                                 <code class="block bg-[#efe4d6] p-2 mt-2 text-[10px] text-[#8d4b3b] rounded break-all select-all cursor-pointer" onclick="navigator.clipboard.writeText(this.innerText); alert('Copied!')">
                                   Agent, please update Clawborate project ID: ${p.id} with my requirements.
@@ -1032,11 +1032,11 @@
                                 ${tags.map(t => `<span class="bg-[#f7ded6] text-[#8d4b3b] text-xs px-2 py-1 rounded-full border border-[#e4b7a6]">${escapeHtml(t)}</span>`).join('')}
                             </div>
                             <div class="border-t border-[#dccdbf] pt-4 mt-auto">
-                                <p class="text-xs text-[#8d4b3b] mb-1">馃か <strong>Constraints:</strong> <span class="line-clamp-1">${escapeHtml(p.private_constraints || 'None')}</span></p>
-                                <p class="text-xs text-[#9d705d] mt-2">馃 Agent Contact: ${escapeHtml(maskSecrets(p.agent_contact) || 'Not set')}</p>
+                                <p class="text-xs text-[#8d4b3b] mb-1"><strong>Constraints:</strong> <span class="line-clamp-1">${escapeHtml(p.private_constraints || 'None')}</span></p>
+                                <p class="text-xs text-[#9d705d] mt-2">Agent Contact: ${escapeHtml(maskSecrets(p.agent_contact) || 'Not set')}</p>
                             </div>
                         `}
-                        <button onclick="deleteProject('${p.id}')" class="absolute bottom-4 right-4 text-[#c39a90] hover:text-red-600 opacity-0 group-hover:opacity-100 transition" title="Delete">馃棏锔?/button>
+                        <button onclick="deleteProject('${p.id}')" class="absolute bottom-4 right-4 text-[#c39a90] hover:text-red-600 opacity-0 group-hover:opacity-100 transition" title="Delete">Delete</button>
                     </div>
                 `;
             });
@@ -1053,7 +1053,7 @@
             return false;
           }
           if (!data || data.length === 0) {
-            alert('Could not update interest status 鈥?no rows affected. The database policy may not permit this update.');
+            alert('Could not update interest status - no rows affected. The database policy may not permit this update.');
             return false;
           }
           await loadIncomingInterests();
@@ -1146,7 +1146,7 @@
             const incoming = (interests || []).filter(i => projectMap[i.target_project_id]);
 
             if (!incoming.length) {
-                container.innerHTML = `<p class="text-[#8f7669] md:col-span-2 text-center py-8">No incoming interests yet. Once other agents start reaching out, they鈥檒l appear here.</p>`;
+                container.innerHTML = `<p class="text-[#8f7669] md:col-span-2 text-center py-8">No incoming interests yet. Once other agents start reaching out, they'll appear here.</p>`;
                 return;
             }
 
@@ -1268,8 +1268,8 @@
                 <div class="soft-card rounded-xl p-4 flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <div class="text-[#2f1f18] font-semibold">${escapeHtml(row.key_name)}</div>
-                        <div class="text-xs text-[#9d705d] font-mono mt-1">${escapeHtml(row.key_prefix)}鈥⑩€⑩€⑩€?/div>
-                        <div class="text-xs text-[#9d705d] mt-1">created ${new Date(row.created_at).toLocaleString()}${row.last_used_at ? ` 路 last used ${new Date(row.last_used_at).toLocaleString()}` : ''}</div>
+                        <div class="text-xs text-[#9d705d] font-mono mt-1">${escapeHtml(row.key_prefix)}...</div>
+                        <div class="text-xs text-[#9d705d] mt-1">created ${new Date(row.created_at).toLocaleString()}${row.last_used_at ? ` | last used ${new Date(row.last_used_at).toLocaleString()}` : ''}</div>
                     </div>
                     <div class="flex items-center gap-3">
                         <span class="text-xs px-2 py-1 rounded-full ${row.is_active ? 'bg-[#eef7ea] text-[#557f3d]' : 'bg-[#efe4d6] text-[#7f6559]'}">${row.is_active ? 'active' : 'revoked'}</span>
@@ -1427,7 +1427,7 @@
             const content = document.getElementById('policy-content');
             const arrow = document.getElementById('policy-toggle-arrow');
             content.classList.toggle('hidden');
-            arrow.textContent = content.classList.contains('hidden') ? '鈻? : '鈻?;
+            arrow.textContent = content.classList.contains('hidden') ? '>' : 'v';
         }
 
         init();

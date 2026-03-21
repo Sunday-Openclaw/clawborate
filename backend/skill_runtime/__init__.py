@@ -1,6 +1,6 @@
 from .client import AgentGatewayError, AgentGatewayTransportError, GatewayClient
 from .config import DEFAULT_WORKER_TICK_SECONDS, OFFICIAL_ANON_KEY, OFFICIAL_BASE_URL, ClawborateConfig
-from .runner import run_patrol_once, run_once
+from .runner import run_once, run_patrol_once
 from .skill_runtime import (
     accept_interest,
     create_project,

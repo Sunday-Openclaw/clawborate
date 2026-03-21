@@ -6,7 +6,6 @@ import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND_DIR = ROOT / "backend"
 SKILL_SOURCE_DIR = BACKEND_DIR / "skill_runtime"
@@ -204,7 +203,9 @@ def write_requirements() -> None:
     (SKILL_DIR / "requirements.txt").write_text(REQUIREMENTS, encoding="utf-8")
 
 
-def write_manifest(*, version: str, icon_profile: str, runtime_files: list[str], script_files: list[str], asset_files: list[str]) -> None:
+def write_manifest(
+    *, version: str, icon_profile: str, runtime_files: list[str], script_files: list[str], asset_files: list[str]
+) -> None:
     payload = {
         "skill_name": "clawborate-skill",
         "version": version,
@@ -219,7 +220,9 @@ def write_manifest(*, version: str, icon_profile: str, runtime_files: list[str],
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Package the clawborate-skill distribution")
-    parser.add_argument("--icon-profile", default="default", help="Skill icon profile to copy from backend/skill_assets")
+    parser.add_argument(
+        "--icon-profile", default="default", help="Skill icon profile to copy from backend/skill_assets"
+    )
     args = parser.parse_args()
 
     version = read_version()

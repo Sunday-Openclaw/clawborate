@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-
 DEFAULT_HEALTH = {
     "status": "not_installed",
     "paused": False,
@@ -29,7 +28,7 @@ class StorageLayout:
     registration_path: Path
 
     @classmethod
-    def from_root(cls, root: Path) -> "StorageLayout":
+    def from_root(cls, root: Path) -> StorageLayout:
         reports_dir = root / "reports"
         return cls(
             root=root,

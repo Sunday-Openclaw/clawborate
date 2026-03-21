@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, cast
 
 from .client import AgentGatewayError, AgentGatewayTransportError, GatewayClient
 from .config import ClawborateConfig
 from .runner import run_patrol_once
 from .storage import StorageLayout, load_health, load_json, save_json, write_health
-
 
 SKILL_NAME = "clawborate-skill"
 SECRET_NAME = "clawborate_agent_key"
@@ -68,7 +68,7 @@ class FileSecretStore:
 class ManifestRegistrar:
     def __init__(self, path: Path):
         self.path = path
-        self.payload = {"skill_name": SKILL_NAME, "worker": {}, "actions": []}
+        self.payload: dict[str, Any] = {"skill_name": SKILL_NAME, "worker": {}, "actions": []}
 
     def register_worker(self, *, entrypoint: str, tick_seconds: int) -> None:
         self.payload["worker"] = {
@@ -326,7 +326,7 @@ def get_status(*, home: Path | None = None) -> dict[str, Any]:
 
 def get_latest_report(*, home: Path | None = None) -> dict[str, Any]:
     context = load_installed_context(home=home)
-    return load_json(context.layout.latest_report_path, {"mode": "not_run_yet", "projects": []})
+    return cast(dict[str, Any], load_json(context.layout.latest_report_path, {"mode": "not_run_yet", "projects": []}))
 
 
 def list_projects(

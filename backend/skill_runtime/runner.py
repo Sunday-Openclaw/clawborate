@@ -26,7 +26,6 @@ from .client import (
 from .config import OFFICIAL_ANON_KEY, OFFICIAL_BASE_URL
 from .policy_runtime import db_policy_to_runtime_bundle, should_run_market_patrol
 
-
 DEFAULT_STATE_FILE = ".clawborate_policy_runner_state.json"
 DEFAULT_REPORT_DIR = ".clawborate_policy_runner_reports"
 
@@ -55,7 +54,9 @@ def extract_record_id(value: Any) -> str | None:
     return None
 
 
-def apply_conversation_state(agent_key: str, state_plan: dict[str, Any], client: GatewayClient | None = None) -> dict[str, Any] | None:
+def apply_conversation_state(
+    agent_key: str, state_plan: dict[str, Any], client: GatewayClient | None = None
+) -> dict[str, Any] | None:
     conversation_id = state_plan.get("conversation_id")
     if not conversation_id:
         return None
@@ -107,7 +108,9 @@ def execute_project_actions(
         if update_result:
             actions["conversation_state_updates"].append(update_result)
 
-    allow_auto_interest = execution["interest_policy"] == "auto_send_high_confidence" and not execution["before_interest"]
+    allow_auto_interest = (
+        execution["interest_policy"] == "auto_send_high_confidence" and not execution["before_interest"]
+    )
     if allow_auto_interest:
         for decision in report.get("selected_interests", []):
             if decision.get("decision") != "interest":
@@ -136,12 +139,13 @@ def execute_project_actions(
                 }
             )
 
-    auto_start_allowed = effective_policy.get("automation", {}).get("autoStartConversation", False) and not effective_policy.get(
-        "automation", {}
-    ).get("requireHumanApprovalForConversation", True)
+    auto_start_allowed = effective_policy.get("automation", {}).get(
+        "autoStartConversation", False
+    ) and not effective_policy.get("automation", {}).get("requireHumanApprovalForConversation", True)
     if auto_start_allowed:
         decisions_by_project = {
-            decision.get("project_id"): decision for decision in report.get("conversation_candidates", []) + report.get("handoffs", [])
+            decision.get("project_id"): decision
+            for decision in report.get("conversation_candidates", []) + report.get("handoffs", [])
         }
         for candidate in report.get("execution_plan", {}).get("conversation_auto_start_candidates", []):
             interest_id = candidate.get("existing_interest_id")
@@ -202,11 +206,15 @@ def run_once(
     report_dir.mkdir(parents=True, exist_ok=True)
 
     active_client = client or make_client(agent_key, base_url=base_url, anon_key=anon_key)
-    projects = active_client.list_my_projects(limit=200) if client else list_my_projects(
-        agent_key=agent_key,
-        limit=200,
-        base_url=base_url,
-        anon_key=anon_key,
+    projects = (
+        active_client.list_my_projects(limit=200)
+        if client
+        else list_my_projects(
+            agent_key=agent_key,
+            limit=200,
+            base_url=base_url,
+            anon_key=anon_key,
+        )
     )
     projects = projects or []
     summary: dict[str, Any] = {
@@ -219,11 +227,15 @@ def run_once(
     for project in projects:
         project_id = project.get("id")
         project_name = project.get("project_name")
-        policy_row = active_client.get_policy(project_id=project_id) if client else get_policy(
-            agent_key,
-            project_id=project_id,
-            base_url=base_url,
-            anon_key=anon_key,
+        policy_row = (
+            active_client.get_policy(project_id=project_id)
+            if client
+            else get_policy(
+                agent_key,
+                project_id=project_id,
+                base_url=base_url,
+                anon_key=anon_key,
+            )
         )
         policy_source = "database" if policy_row else "default_fallback"
         policy_bundle = db_policy_to_runtime_bundle(
@@ -255,21 +267,33 @@ def run_once(
             continue
 
         market_limit = int(policy_bundle["effective_policy"].get("scanStrategy", {}).get("maxProjectsPerRun", 30))
-        market = active_client.list_market(limit=market_limit) if client else list_market(
-            agent_key=agent_key,
-            limit=market_limit,
-            base_url=base_url,
-            anon_key=anon_key,
+        market = (
+            active_client.list_market(limit=market_limit)
+            if client
+            else list_market(
+                agent_key=agent_key,
+                limit=market_limit,
+                base_url=base_url,
+                anon_key=anon_key,
+            )
         )
-        open_interests = active_client.list_outgoing_interests() if client else list_outgoing_interests(
-            agent_key=agent_key,
-            base_url=base_url,
-            anon_key=anon_key,
+        open_interests = (
+            active_client.list_outgoing_interests()
+            if client
+            else list_outgoing_interests(
+                agent_key=agent_key,
+                base_url=base_url,
+                anon_key=anon_key,
+            )
         )
-        conversations = active_client.list_conversations() if client else list_conversations(
-            agent_key=agent_key,
-            base_url=base_url,
-            anon_key=anon_key,
+        conversations = (
+            active_client.list_conversations()
+            if client
+            else list_conversations(
+                agent_key=agent_key,
+                base_url=base_url,
+                anon_key=anon_key,
+            )
         )
         me = {"id": project.get("user_id"), "email": None}
         report = choose_candidates_from_data(

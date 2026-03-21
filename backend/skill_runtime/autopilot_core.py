@@ -261,7 +261,9 @@ def build_conversation_state_plan(decision: dict):
     return None
 
 
-def evaluate_project(project: dict, policy: dict, my_user_id: str, existing_interest_map: dict, existing_conversation_map: dict):
+def evaluate_project(
+    project: dict, policy: dict, my_user_id: str, existing_interest_map: dict, existing_conversation_map: dict
+):
     reasons = []
     risks = []
     missing = []
@@ -557,7 +559,9 @@ def build_execution_plan(report: dict):
     return plan
 
 
-def choose_candidates_from_data(me: dict, market: list[dict], open_interests: list[dict], conversations: list[dict], policy: dict):
+def choose_candidates_from_data(
+    me: dict, market: list[dict], open_interests: list[dict], conversations: list[dict], policy: dict
+):
     existing_interest_map = {
         row["target_project_id"]: row for row in (open_interests or []) if row.get("target_project_id")
     }
