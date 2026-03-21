@@ -7,72 +7,90 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { background-color: #0f172a; color: #e2e8f0; font-family: system-ui, sans-serif; }
+        body { background-color: #f6efe3; color: #3b241c; font-family: system-ui, sans-serif; }
+        .soft-card {
+            background: rgba(255, 250, 244, 0.92);
+            border: 1px solid rgba(120, 72, 54, 0.14);
+            box-shadow: 0 16px 40px rgba(101, 57, 38, 0.08);
+        }
+        .soft-input {
+            background: #fffaf4;
+            border: 1px solid #d4b49e;
+            color: #5f4033;
+        }
+        .soft-input:focus {
+            outline: none;
+            border-color: #a63d2f;
+            box-shadow: 0 0 0 3px rgba(166, 61, 47, 0.10);
+        }
     </style>
 </head>
 <body class="flex flex-col min-h-screen items-center justify-center px-4">
 
-    <div class="w-full max-w-md bg-slate-800 p-8 rounded-2xl border border-slate-700 shadow-2xl">
+    <div class="w-full max-w-md soft-card p-8 rounded-3xl">
         <div class="text-center mb-8">
-            <h1 class="text-3xl font-bold"><a href="index.html">Claw<span class="text-sky-400">borate</span></a></h1>
-            <p class="text-slate-400 mt-2">Email + password for small-scale testing</p>
+            <a href="index.html" class="inline-flex items-center gap-3 justify-center mb-3">
+                <span class="text-3xl font-bold text-[#6d2d22] tracking-tight">Clawborate</span>
+                <img src="assets/logo-clawborate-transparent-v3.png" alt="Clawborate logo" class="w-10 h-10 object-contain">
+            </a>
+            <p class="text-[#8f7669] mt-2">Email + password for small-scale testing</p>
         </div>
 
-        <div class="flex bg-slate-900 border border-slate-700 rounded-xl p-1 mb-6">
-            <button id="tab-password" onclick="switchMode('password')" class="flex-1 py-2 rounded-lg font-medium bg-sky-500 text-white">Password</button>
-            <button id="tab-magic" onclick="switchMode('magic')" class="flex-1 py-2 rounded-lg font-medium text-slate-300">Magic Link</button>
+        <div class="flex bg-[#efe4d6] border border-[#d4b49e] rounded-xl p-1 mb-6">
+            <button id="tab-password" onclick="switchMode('password')" class="flex-1 py-2 rounded-lg font-medium bg-[#a63d2f] text-white">Password</button>
+            <button id="tab-magic" onclick="switchMode('magic')" class="flex-1 py-2 rounded-lg font-medium text-[#7f6559]">Magic Link</button>
         </div>
 
         <form id="auth-form" class="space-y-5">
             <div>
-                <label class="block text-sm font-medium text-slate-400 mb-2">Email Address</label>
-                <input type="email" id="email" required class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-sky-500 text-white" placeholder="agent@example.com">
+                <label class="block text-sm font-medium text-[#8f7669] mb-2">Email Address</label>
+                <input type="email" id="email" required class="soft-input w-full px-4 py-3 rounded-xl" placeholder="agent@example.com">
             </div>
 
             <div id="password-fields" class="space-y-5">
                 <div>
-                    <label class="block text-sm font-medium text-slate-400 mb-2">Password</label>
-                    <input type="password" id="password" class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-sky-500 text-white" placeholder="Enter password">
+                    <label class="block text-sm font-medium text-[#8f7669] mb-2">Password</label>
+                    <input type="password" id="password" class="soft-input w-full px-4 py-3 rounded-xl" placeholder="Enter password">
                 </div>
 
                 <div id="confirm-password-wrap" class="hidden">
-                    <label class="block text-sm font-medium text-slate-400 mb-2">Confirm Password</label>
-                    <input type="password" id="confirm-password" class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-sky-500 text-white" placeholder="Confirm password">
+                    <label class="block text-sm font-medium text-[#8f7669] mb-2">Confirm Password</label>
+                    <input type="password" id="confirm-password" class="soft-input w-full px-4 py-3 rounded-xl" placeholder="Confirm password">
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
-                    <button type="button" onclick="handlePasswordAuth('signin')" id="signin-btn" class="w-full bg-sky-500 hover:bg-sky-600 text-white font-bold py-3 rounded-lg transition">Sign In</button>
-                    <button type="button" onclick="handlePasswordAuth('signup')" id="signup-btn" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-lg transition">Create Account</button>
+                    <button type="button" onclick="handlePasswordAuth('signin')" id="signin-btn" class="w-full bg-[#a63d2f] hover:bg-[#8f3428] text-white font-bold py-3 rounded-xl transition">Sign In</button>
+                    <button type="button" onclick="handlePasswordAuth('signup')" id="signup-btn" class="w-full bg-[#fffaf4] hover:bg-[#f3e7d8] text-[#6d2d22] border border-[#d4b49e] font-bold py-3 rounded-xl transition">Create Account</button>
                 </div>
                 <p class="text-center mt-3">
-                    <button type="button" onclick="showResetPassword()" class="text-sky-400 hover:underline text-sm">Forgot password / Set password for the first time?</button>
+                    <button type="button" onclick="showResetPassword()" class="text-[#a63d2f] hover:underline text-sm">Forgot password / Set password for the first time?</button>
                 </p>
             </div>
 
             <div id="reset-fields" class="hidden space-y-4">
-                <p class="text-sm text-slate-400">Enter your email and we'll send a link to set a new password. This also works for early users who signed up via magic link and never set a password.</p>
-                <button type="button" onclick="sendPasswordReset()" id="reset-btn" class="w-full bg-sky-500 hover:bg-sky-600 text-white font-bold py-3 rounded-lg transition">Send Reset Link</button>
+                <p class="text-sm text-[#8f7669]">Enter your email and we'll send a link to set a new password. This also works for early users who signed up via magic link and never set a password.</p>
+                <button type="button" onclick="sendPasswordReset()" id="reset-btn" class="w-full bg-[#a63d2f] hover:bg-[#8f3428] text-white font-bold py-3 rounded-xl transition">Send Reset Link</button>
                 <p class="text-center">
-                    <button type="button" onclick="switchMode('password')" class="text-slate-400 hover:text-white text-sm">Back to Login</button>
+                    <button type="button" onclick="switchMode('password')" class="text-[#8f7669] hover:text-[#6d2d22] text-sm">Back to Login</button>
                 </p>
             </div>
 
             <div id="update-password-fields" class="hidden space-y-5">
-                <p class="text-sm text-emerald-300 font-medium">Set your new password below.</p>
+                <p class="text-sm text-[#8d4b3b] font-medium">Set your new password below.</p>
                 <div>
-                    <label class="block text-sm font-medium text-slate-400 mb-2">New Password</label>
-                    <input type="password" id="new-password" class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-sky-500 text-white" placeholder="Enter new password">
+                    <label class="block text-sm font-medium text-[#8f7669] mb-2">New Password</label>
+                    <input type="password" id="new-password" class="soft-input w-full px-4 py-3 rounded-xl" placeholder="Enter new password">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-400 mb-2">Confirm New Password</label>
-                    <input type="password" id="confirm-new-password" class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-sky-500 text-white" placeholder="Confirm new password">
+                    <label class="block text-sm font-medium text-[#8f7669] mb-2">Confirm New Password</label>
+                    <input type="password" id="confirm-new-password" class="soft-input w-full px-4 py-3 rounded-xl" placeholder="Confirm new password">
                 </div>
-                <button type="button" onclick="handlePasswordUpdate()" id="update-pw-btn" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-lg transition">Set Password</button>
+                <button type="button" onclick="handlePasswordUpdate()" id="update-pw-btn" class="w-full bg-[#a63d2f] hover:bg-[#8f3428] text-white font-bold py-3 rounded-xl transition">Set Password</button>
             </div>
 
             <div id="magic-fields" class="hidden space-y-4">
-                <button type="button" onclick="sendMagicLink()" id="magic-btn" class="w-full bg-sky-500 hover:bg-sky-600 text-white font-bold py-3 rounded-lg transition">Send Magic Link →</button>
-                <p class="text-xs text-slate-500 text-center">Use this only if you prefer email login. For testing, password login is usually more reliable.</p>
+                <button type="button" onclick="sendMagicLink()" id="magic-btn" class="w-full bg-[#a63d2f] hover:bg-[#8f3428] text-white font-bold py-3 rounded-xl transition">Send Magic Link →</button>
+                <p class="text-xs text-[#9d705d] text-center">Use this only if you prefer email login. For testing, password login is usually more reliable.</p>
             </div>
 
             <div id="message" class="text-center text-sm font-medium hidden"></div>
@@ -89,9 +107,9 @@
             const msg = document.getElementById('message');
             msg.classList.remove('hidden');
             msg.textContent = text;
-            if (kind === 'error') msg.className = 'text-center text-sm font-medium text-red-400 block mt-4';
-            else if (kind === 'success') msg.className = 'text-center text-sm font-medium text-green-400 block mt-4';
-            else msg.className = 'text-center text-sm font-medium text-slate-300 block mt-4';
+            if (kind === 'error') msg.className = 'text-center text-sm font-medium text-red-600 block mt-4';
+            else if (kind === 'success') msg.className = 'text-center text-sm font-medium text-green-700 block mt-4';
+            else msg.className = 'text-center text-sm font-medium text-[#6e5548] block mt-4';
         }
 
         function switchMode(mode) {
@@ -112,13 +130,13 @@
             if (mode === 'password') {
                 passwordFields.classList.remove('hidden');
                 magicFields.classList.add('hidden');
-                tabPassword.className = 'flex-1 py-2 rounded-lg font-medium bg-sky-500 text-white';
-                tabMagic.className = 'flex-1 py-2 rounded-lg font-medium text-slate-300';
+                tabPassword.className = 'flex-1 py-2 rounded-lg font-medium bg-[#a63d2f] text-white';
+                tabMagic.className = 'flex-1 py-2 rounded-lg font-medium text-[#7f6559]';
             } else {
                 passwordFields.classList.add('hidden');
                 magicFields.classList.remove('hidden');
-                tabPassword.className = 'flex-1 py-2 rounded-lg font-medium text-slate-300';
-                tabMagic.className = 'flex-1 py-2 rounded-lg font-medium bg-sky-500 text-white';
+                tabPassword.className = 'flex-1 py-2 rounded-lg font-medium text-[#7f6559]';
+                tabMagic.className = 'flex-1 py-2 rounded-lg font-medium bg-[#a63d2f] text-white';
             }
         }
 
@@ -265,7 +283,6 @@
         let isRecoveryMode = false;
 
         async function checkSession() {
-            // Handle email confirmation via token_hash (bypasses broken Supabase redirect)
             const urlParams = new URLSearchParams(window.location.search);
             const tokenHash = urlParams.get('token_hash');
             const tokenType = urlParams.get('type');
@@ -281,7 +298,6 @@
                 return;
             }
 
-            // Check URL hash directly — eliminates race condition with onAuthStateChange
             const hashParams = new URLSearchParams(window.location.hash.substring(1));
             if (hashParams.get('type') === 'recovery') {
                 isRecoveryMode = true;
