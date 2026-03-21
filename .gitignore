@@ -24,6 +24,7 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+.claude/
 
 # Project-specific secrets
 backend/agent_identity_map.json

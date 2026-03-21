@@ -91,6 +91,20 @@ begin
                 limit v_limit
             ) t;
 
+        when 'list_my_projects' then
+            if not (v_scopes ? 'projects') then
+                return jsonb_build_object('error', 'missing_scope', 'message', 'Scope "projects" required');
+            end if;
+
+            select jsonb_agg(t) into v_result
+            from (
+                select id, user_id, project_name, public_summary, tags, agent_contact, created_at
+                from public.projects
+                where user_id = v_owner_user_id
+                order by created_at desc
+                limit v_limit
+            ) t;
+
         when 'get_project' then
             if not (v_scopes ? 'projects') then
                 return jsonb_build_object('error', 'missing_scope', 'message', 'Scope "projects" required');

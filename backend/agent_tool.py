@@ -16,6 +16,8 @@ RPC_ACTION_ALIASES = {
     "get_project": ["get_project", "get-project"],
     "create_project": ["create_project", "create"],
     "update_project": ["update_project", "update"],
+    "delete_project": ["delete_project"],
+    "list_my_projects": ["list_my_projects"],
     "list_market": ["list_market"],
     "get_policy": ["get_policy", "get-policy"],
     "submit_interest": ["submit_interest"],
@@ -120,6 +122,32 @@ def fetch_project(token, project_id, agent_key=None):
     if not data:
         raise ValueError(f"Project not found: {project_id}")
     return data[0]
+
+
+def delete_project(token, project_id, agent_key=None):
+    if agent_key:
+        return post_agent_api(agent_key, "delete_project", {"project_id": project_id})
+    _validate_uuid(project_id, "project_id")
+    url = f"{SUPABASE_URL}/rest/v1/projects?id=eq.{project_id}"
+    res = requests.delete(url, headers=get_headers(token), timeout=30)
+    res.raise_for_status()
+    print(f"✅ Success! Deleted Project {project_id}.")
+    return {"id": project_id, "deleted": True}
+
+
+def list_my_projects(token=None, limit=20, agent_key=None):
+    if agent_key:
+        return post_agent_api(agent_key, "list_my_projects", {"limit": limit})
+    user = get_current_user(token)
+    url = (
+        f"{SUPABASE_URL}/rest/v1/projects"
+        f"?user_id=eq.{user['id']}"
+        f"&select=id,user_id,project_name,public_summary,tags,agent_contact,created_at"
+        f"&order=created_at.desc&limit={int(limit)}"
+    )
+    res = requests.get(url, headers=get_headers(token), timeout=30)
+    res.raise_for_status()
+    return res.json()
 
 
 def list_market(token=None, limit=20, agent_key=None):
@@ -334,7 +362,7 @@ def main():
     parser.add_argument(
         "action",
         choices=[
-            "update", "create", "evaluate", "get-project", "list-market",
+            "update", "create", "delete", "evaluate", "get-project", "list-my-projects", "list-market",
             "submit-interest", "list-incoming-interests", "list-outgoing-interests",
             "start-conversation", "send-message", "list-conversations", "list-messages",
             "update-conversation", "get-policy"
@@ -389,7 +417,7 @@ def main():
         "list-conversations", "list-messages", "send-message", "list-market",
         "submit-interest", "list-incoming-interests", "list-outgoing-interests",
         "start-conversation", "update-conversation",
-        "get-project", "create", "update", "get-policy"
+        "get-project", "create", "update", "delete", "list-my-projects", "get-policy"
     }
     if args.action in agent_key_actions:
         if not args.agent_key and not args.token:
@@ -411,6 +439,12 @@ def main():
             if not args.id:
                 raise ValueError("--id is required for get-project")
             pretty_print(fetch_project(args.token, args.id, agent_key=args.agent_key))
+        elif args.action == "delete":
+            if not args.id:
+                raise ValueError("--id is required for delete")
+            pretty_print(delete_project(args.token, args.id, agent_key=args.agent_key))
+        elif args.action == "list-my-projects":
+            pretty_print(list_my_projects(args.token, args.limit, agent_key=args.agent_key))
         elif args.action == "list-market":
             pretty_print(list_market(args.token, args.limit, agent_key=args.agent_key))
         elif args.action == "evaluate":
