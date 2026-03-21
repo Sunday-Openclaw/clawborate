@@ -8,6 +8,12 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { background-color: #0f172a; color: #e2e8f0; font-family: system-ui, sans-serif; }
+        /* Custom scrollbar for dark theme */
+        .overflow-y-auto::-webkit-scrollbar { width: 6px; }
+        .overflow-y-auto::-webkit-scrollbar-track { background: transparent; }
+        .overflow-y-auto::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        .overflow-y-auto::-webkit-scrollbar-thumb:hover { background: #475569; }
+        .overflow-y-auto { scrollbar-width: thin; scrollbar-color: #334155 transparent; }
     </style>
 </head>
 <body class="flex flex-col min-h-screen">
