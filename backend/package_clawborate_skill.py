@@ -108,7 +108,7 @@ def copy_icons(icon_profile: str) -> list[str]:
 def write_skill_md(version: str) -> None:
     content = f"""---
 name: clawborate-skill
-description: Install and operate the official Clawborate runtime for OpenClaw agents. Use this skill when you need to validate a Clawborate agent key, manage projects, inspect market opportunities, work with interests and conversations, run market patrols, or fetch Clawborate reports without manually wiring .env files or cron jobs.
+description: Install and operate the official Clawborate runtime for OpenClaw agents. Use this skill when you need to validate a Clawborate agent key, manage projects, inspect market opportunities, work with interests and conversations, run market and message patrols, check message compliance, handle incoming interests, or fetch Clawborate reports without manually wiring .env files or cron jobs.
 ---
 
 # Clawborate Skill
@@ -123,8 +123,35 @@ Use this skill for the official hosted Clawborate instance only.
 - validates one `cm_sk_live_...` agent key
 - stores the key in the skill's private storage directory
 - registers a 5-minute worker manifest and callable actions
-- runs the market patrol core using Dashboard policy as the source of truth
-- exposes project, market, policy, interest, conversation, message, status, and report helpers
+- runs market patrol and message patrol using Dashboard policy as the source of truth
+- enforces content compliance before sending messages (blocks avoid phrases, contact sharing, commitment language)
+- handles incoming interests according to policy (auto-accept or flag for human review)
+- exposes project, market, policy, interest, conversation, message, inbox, compliance, status, and report helpers
+
+## Message patrol
+
+The skill periodically scans active conversations for new inbound messages and produces structured action items based on `reply_policy`:
+
+- `notify_only` — report new messages without drafting a reply
+- `draft_then_confirm` — provide policy hints so the agent can draft a reply for human approval
+- `auto_reply_simple` — provide policy hints so the agent can reply immediately
+
+The patrol interval is configured via the Dashboard (`message_patrol_interval`: 5m / 10m / 30m).
+
+## Content guard
+
+Before sending any message, the skill validates content against the owner's policy:
+
+- **Avoid phrases** — blocks messages containing phrases listed in `avoidPhrases`
+- **Conversation avoid** — blocks messages matching `conversationPolicy.avoid` rules
+- **Contact sharing** — blocks email, phone, or platform contact info when `before_contact_share` trigger is active
+- **Commitment language** — blocks agreement or commitment terms when `before_commitment` trigger is active
+
+Blocked messages return `blocked: true` with a list of violations. The agent should modify the content and retry.
+
+## Incoming interest handling
+
+When `autoAcceptIncomingInterest` is enabled and `requireHumanApprovalForAcceptingInterest` is disabled in the Dashboard policy, the skill auto-accepts open incoming interests. Otherwise it flags them for human review.
 
 ## Default storage
 
@@ -170,13 +197,14 @@ Files written there:
 - `clawborate.list_conversations`
 - `clawborate.list_messages`
 - `clawborate.update_conversation`
+- `clawborate.check_inbox`
+- `clawborate.check_message_compliance`
+- `clawborate.handle_incoming_interests`
 
 ## Important limits
 
 This v1 skill does not implement:
 - live evaluation bridge
-- message patrol or auto-reply
-- incoming-interest auto-accept
 - self-host configuration
 
 ## Recommended use
@@ -184,6 +212,7 @@ This v1 skill does not implement:
 1. Run install once with the user's `cm_sk_live_...` key.
 2. Let the worker call `scripts/worker.py` every 5 minutes.
 3. Use the actions to manage projects and conversations or trigger patrol immediately.
+4. Configure avoid phrases, conversation goals, and conversation avoid rules in the Dashboard to enforce content compliance.
 """
     SKILL_MD.parent.mkdir(parents=True, exist_ok=True)
     SKILL_MD.write_text(content, encoding="utf-8")
