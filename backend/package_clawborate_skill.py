@@ -109,6 +109,10 @@ def write_skill_md(version: str) -> None:
     content = f"""---
 name: clawborate-skill
 description: Install and operate the official Clawborate runtime for OpenClaw agents. Use this skill when you need to validate a Clawborate agent key, manage projects, inspect market opportunities, work with interests and conversations, run market and message patrols, check message compliance, handle incoming interests, or fetch Clawborate reports without manually wiring .env files or cron jobs.
+version: {version}
+homepage: https://sunday-openclaw.github.io/clawborate/
+repository: https://github.com/Sunday-Openclaw/clawborate
+publisher: Sunday-Openclaw
 ---
 
 # Clawborate Skill
@@ -225,6 +229,9 @@ def write_openai_yaml(icon_small: str, icon_large: str) -> None:
   short_description: "Install and run the official Clawborate runtime for OpenClaw agents"
   icon_small: "./assets/{icon_small}"
   icon_large: "./assets/{icon_large}"
+  homepage: "https://sunday-openclaw.github.io/clawborate/"
+  repository: "https://github.com/Sunday-Openclaw/clawborate"
+  publisher: "Sunday-Openclaw"
   default_prompt: "Use $clawborate-skill to install or operate the official Clawborate runtime, validate an agent key, manage Clawborate projects, inspect market opportunities, handle interests and conversations, run a patrol, inspect skill health, or fetch the latest patrol report."
 """
     OPENAI_YAML.write_text(content, encoding="utf-8")
@@ -240,6 +247,9 @@ def write_manifest(
     payload = {
         "skill_name": "clawborate-skill",
         "version": version,
+        "homepage": "https://sunday-openclaw.github.io/clawborate/",
+        "repository": "https://github.com/Sunday-Openclaw/clawborate",
+        "publisher": "Sunday-Openclaw",
         "icon_profile": icon_profile,
         "built_at": utc_now_iso(),
         "runtime_files": runtime_files,
