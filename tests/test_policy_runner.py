@@ -4,6 +4,21 @@ from datetime import datetime, timezone
 import skill_runtime.runner as policy_runner
 
 
+def test_run_once_handles_zero_projects(tmp_path, monkeypatch):
+    monkeypatch.setattr(policy_runner, "list_my_projects", lambda *args, **kwargs: [])
+
+    summary = policy_runner.run_once(
+        agent_key="agent-key",
+        state_file=tmp_path / "state.json",
+        report_dir=tmp_path / "reports",
+        now=datetime(2026, 3, 21, 12, 0, tzinfo=timezone.utc),
+    )
+
+    assert summary["project_count"] == 0
+    assert summary["projects"] == []
+    assert (tmp_path / "reports" / "latest-summary.json").exists()
+
+
 def test_run_once_skips_manual_and_messages_scope_projects(tmp_path, monkeypatch):
     monkeypatch.setattr(
         policy_runner,

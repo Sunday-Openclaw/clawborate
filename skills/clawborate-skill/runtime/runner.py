@@ -227,6 +227,7 @@ def run_once(
         "projects": [],
     }
 
+    policy_bundle = None
     for project in projects:
         project_id = project.get("id")
         project_name = project.get("project_name")
