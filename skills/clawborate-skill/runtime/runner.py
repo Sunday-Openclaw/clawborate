@@ -13,8 +13,10 @@ from typing import Any
 from .autopilot_core import choose_candidates_from_data
 from .client import (
     GatewayClient,
+    accept_interest,
     get_policy,
     list_conversations,
+    list_incoming_interests,
     list_market,
     list_my_projects,
     list_outgoing_interests,
@@ -24,8 +26,8 @@ from .client import (
     update_conversation,
 )
 from .config import OFFICIAL_ANON_KEY, OFFICIAL_BASE_URL
-from .policy_runtime import db_policy_to_runtime_bundle, should_run_market_patrol
-
+from .message_patrol import run_message_patrol
+from .policy_runtime import db_policy_to_runtime_bundle, should_run_market_patrol, should_run_message_patrol
 
 DEFAULT_STATE_FILE = ".clawborate_policy_runner_state.json"
 DEFAULT_REPORT_DIR = ".clawborate_policy_runner_reports"
@@ -55,7 +57,9 @@ def extract_record_id(value: Any) -> str | None:
     return None
 
 
-def apply_conversation_state(agent_key: str, state_plan: dict[str, Any], client: GatewayClient | None = None) -> dict[str, Any] | None:
+def apply_conversation_state(
+    agent_key: str, state_plan: dict[str, Any], client: GatewayClient | None = None
+) -> dict[str, Any] | None:
     conversation_id = state_plan.get("conversation_id")
     if not conversation_id:
         return None
@@ -107,7 +111,9 @@ def execute_project_actions(
         if update_result:
             actions["conversation_state_updates"].append(update_result)
 
-    allow_auto_interest = execution["interest_policy"] == "auto_send_high_confidence" and not execution["before_interest"]
+    allow_auto_interest = (
+        execution["interest_policy"] == "auto_send_high_confidence" and not execution["before_interest"]
+    )
     if allow_auto_interest:
         for decision in report.get("selected_interests", []):
             if decision.get("decision") != "interest":
@@ -136,12 +142,13 @@ def execute_project_actions(
                 }
             )
 
-    auto_start_allowed = effective_policy.get("automation", {}).get("autoStartConversation", False) and not effective_policy.get(
-        "automation", {}
-    ).get("requireHumanApprovalForConversation", True)
+    auto_start_allowed = effective_policy.get("automation", {}).get(
+        "autoStartConversation", False
+    ) and not effective_policy.get("automation", {}).get("requireHumanApprovalForConversation", True)
     if auto_start_allowed:
         decisions_by_project = {
-            decision.get("project_id"): decision for decision in report.get("conversation_candidates", []) + report.get("handoffs", [])
+            decision.get("project_id"): decision
+            for decision in report.get("conversation_candidates", []) + report.get("handoffs", [])
         }
         for candidate in report.get("execution_plan", {}).get("conversation_auto_start_candidates", []):
             interest_id = candidate.get("existing_interest_id")
@@ -202,11 +209,15 @@ def run_once(
     report_dir.mkdir(parents=True, exist_ok=True)
 
     active_client = client or make_client(agent_key, base_url=base_url, anon_key=anon_key)
-    projects = active_client.list_my_projects(limit=200) if client else list_my_projects(
-        agent_key=agent_key,
-        limit=200,
-        base_url=base_url,
-        anon_key=anon_key,
+    projects = (
+        active_client.list_my_projects(limit=200)
+        if client
+        else list_my_projects(
+            agent_key=agent_key,
+            limit=200,
+            base_url=base_url,
+            anon_key=anon_key,
+        )
     )
     projects = projects or []
     summary: dict[str, Any] = {
@@ -219,11 +230,15 @@ def run_once(
     for project in projects:
         project_id = project.get("id")
         project_name = project.get("project_name")
-        policy_row = active_client.get_policy(project_id=project_id) if client else get_policy(
-            agent_key,
-            project_id=project_id,
-            base_url=base_url,
-            anon_key=anon_key,
+        policy_row = (
+            active_client.get_policy(project_id=project_id)
+            if client
+            else get_policy(
+                agent_key,
+                project_id=project_id,
+                base_url=base_url,
+                anon_key=anon_key,
+            )
         )
         policy_source = "database" if policy_row else "default_fallback"
         policy_bundle = db_policy_to_runtime_bundle(
@@ -248,28 +263,68 @@ def run_once(
             project_summary["status"] = "skipped"
             project_summary["execution"] = {
                 "interest_mode": policy_bundle["execution"]["interest_policy"],
-                "message_patrol_status": "not_implemented",
             }
+            # Even when market patrol is skipped, run message patrol if due
+            msg_due, msg_reason = should_run_message_patrol(
+                policy_bundle["row"],
+                (state.get("conversations_meta", {}).get(project_id) or {}).get("last_message_run_at"),
+                now=now,
+            )
+            if msg_due:
+                conversations = (
+                    active_client.list_conversations()
+                    if client
+                    else list_conversations(agent_key=agent_key, base_url=base_url, anon_key=anon_key)
+                )
+                msg_report = run_message_patrol(
+                    agent_user_id=project.get("user_id", ""),
+                    conversations=conversations or [],
+                    policy_bundle=policy_bundle,
+                    conversation_state=state.get("conversations", {}),
+                    client=active_client,
+                )
+                for conv_id, updates in msg_report.state_updates.items():
+                    state.setdefault("conversations", {})[conv_id] = updates
+                state.setdefault("conversations_meta", {})[project_id] = {
+                    "last_message_run_at": now.isoformat(),
+                }
+                project_summary["execution"]["message_patrol_status"] = "executed"
+                project_summary["execution"]["message_patrol_report"] = msg_report.to_dict()
+                project_summary["status"] = "executed_messages_only"
+            else:
+                project_summary["execution"]["message_patrol_status"] = msg_reason
             save_json(report_dir / f"{project_id}.json", project_summary)
             summary["projects"].append(project_summary)
             continue
 
         market_limit = int(policy_bundle["effective_policy"].get("scanStrategy", {}).get("maxProjectsPerRun", 30))
-        market = active_client.list_market(limit=market_limit) if client else list_market(
-            agent_key=agent_key,
-            limit=market_limit,
-            base_url=base_url,
-            anon_key=anon_key,
+        market = (
+            active_client.list_market(limit=market_limit)
+            if client
+            else list_market(
+                agent_key=agent_key,
+                limit=market_limit,
+                base_url=base_url,
+                anon_key=anon_key,
+            )
         )
-        open_interests = active_client.list_outgoing_interests() if client else list_outgoing_interests(
-            agent_key=agent_key,
-            base_url=base_url,
-            anon_key=anon_key,
+        open_interests = (
+            active_client.list_outgoing_interests()
+            if client
+            else list_outgoing_interests(
+                agent_key=agent_key,
+                base_url=base_url,
+                anon_key=anon_key,
+            )
         )
-        conversations = active_client.list_conversations() if client else list_conversations(
-            agent_key=agent_key,
-            base_url=base_url,
-            anon_key=anon_key,
+        conversations = (
+            active_client.list_conversations()
+            if client
+            else list_conversations(
+                agent_key=agent_key,
+                base_url=base_url,
+                anon_key=anon_key,
+            )
         )
         me = {"id": project.get("user_id"), "email": None}
         report = choose_candidates_from_data(
@@ -291,24 +346,132 @@ def run_once(
             "last_market_run_at": now.isoformat(),
         }
 
+        execution_result: dict[str, Any] = {**actions}
+
+        # --- Message Patrol ---
+        msg_due, msg_reason = should_run_message_patrol(
+            policy_bundle["row"],
+            (state.get("conversations_meta", {}).get(project_id) or {}).get("last_message_run_at"),
+            now=now,
+        )
+        if msg_due:
+            msg_report = run_message_patrol(
+                agent_user_id=project.get("user_id", ""),
+                conversations=conversations or [],
+                policy_bundle=policy_bundle,
+                conversation_state=state.get("conversations", {}),
+                client=active_client,
+            )
+            for conv_id, updates in msg_report.state_updates.items():
+                state.setdefault("conversations", {})[conv_id] = updates
+            state.setdefault("conversations_meta", {})[project_id] = {
+                "last_message_run_at": now.isoformat(),
+            }
+            execution_result["message_patrol_status"] = "executed"
+            execution_result["message_patrol_report"] = msg_report.to_dict()
+        else:
+            execution_result["message_patrol_status"] = msg_reason
+
+        # --- Incoming Interest Handler ---
+        incoming = active_client.list_incoming_interests() if client else list_incoming_interests(
+            agent_key=agent_key, base_url=base_url, anon_key=anon_key,
+        )
+        open_incoming = [i for i in (incoming or []) if i.get("status") == "open"]
+        if open_incoming:
+            effective_policy = policy_bundle["effective_policy"]
+            auto_accept = effective_policy.get("automation", {}).get("autoAcceptIncomingInterest", False)
+            require_approval = effective_policy.get("automation", {}).get(
+                "requireHumanApprovalForAcceptingInterest", True
+            )
+            incoming_results = []
+            for interest in open_incoming:
+                if auto_accept and not require_approval:
+                    accept_result = (
+                        active_client.accept_interest(interest["id"])
+                        if client
+                        else accept_interest(agent_key=agent_key, interest_id=interest["id"],
+                                             base_url=base_url, anon_key=anon_key)
+                    )
+                    incoming_results.append({
+                        "interest_id": interest["id"],
+                        "action": "auto_accepted",
+                        "result": accept_result,
+                    })
+                else:
+                    incoming_results.append({
+                        "interest_id": interest["id"],
+                        "action": "needs_human",
+                    })
+            execution_result["incoming_interest_results"] = incoming_results
+
         project_summary.update(
             {
                 "status": "executed",
                 "source_project_id": project_id,
                 "source_project_name": project_name,
                 "report": report,
-                "execution": {
-                    **actions,
-                    "message_patrol_status": "not_implemented",
-                },
+                "execution": execution_result,
             }
         )
         save_json(report_dir / f"{project_id}.json", project_summary)
         summary["projects"].append(project_summary)
 
     save_json(state_file, state)
+
+    # --- Notification Mode Filter ---
+    # Use the notification_mode from the last policy_bundle processed.
+    # All projects for the same agent typically share the same mode.
+    summary = filter_report_by_notification_mode(
+        summary,
+        policy_bundle["execution"].get("notification_mode", "important_only") if policy_bundle else "important_only",
+    )
+
     save_json(report_dir / "latest-summary.json", summary)
     return summary
+
+
+def filter_report_by_notification_mode(
+    summary: dict[str, Any], mode: str,
+) -> dict[str, Any]:
+    """Trim patrol report detail based on notification_mode.
+
+    - ``important_only``: keep only handoff, needs_reply, mutual_interest events
+    - ``moderate``: above + watch-level project summaries
+    - ``verbose``: full output (no filtering)
+    """
+    if mode == "verbose":
+        return summary
+    filtered_projects = []
+    for proj in summary.get("projects", []):
+        execution = proj.get("execution", {})
+        report = proj.get("report", {})
+
+        # Always include projects with message patrol items needing attention
+        msg_report = execution.get("message_patrol_report", {})
+        has_inbox_items = bool(msg_report.get("items_needing_attention"))
+
+        # Always include projects with incoming interest results
+        has_incoming = bool(execution.get("incoming_interest_results"))
+
+        # Check for handoffs and conversation candidates
+        has_handoffs = bool(report.get("handoffs"))
+        has_conversation_candidates = bool(report.get("conversation_candidates"))
+
+        if mode == "important_only":
+            if has_inbox_items or has_incoming or has_handoffs or has_conversation_candidates:
+                filtered_projects.append(proj)
+        elif mode == "moderate":
+            # Also include watch-level decisions
+            has_watches = any(
+                d.get("decision") == "watch"
+                for d in report.get("decisions", [])
+            )
+            if has_inbox_items or has_incoming or has_handoffs or has_conversation_candidates or has_watches:
+                filtered_projects.append(proj)
+        else:
+            filtered_projects.append(proj)
+
+    return {**summary, "projects": filtered_projects}
 
 
 def run_patrol_once(
@@ -361,6 +524,7 @@ __all__ = [
     "apply_conversation_state",
     "execute_project_actions",
     "extract_record_id",
+    "filter_report_by_notification_mode",
     "load_json",
     "run_once",
     "run_patrol_once",

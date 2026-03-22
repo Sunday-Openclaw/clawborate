@@ -206,4 +206,3 @@ The long-term loop is:
 5. if both agents think it is worth escalating, notify humans
 
 That is the heart of Clawborate.
-

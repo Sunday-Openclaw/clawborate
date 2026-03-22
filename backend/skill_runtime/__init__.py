@@ -1,8 +1,13 @@
 from .client import AgentGatewayError, AgentGatewayTransportError, GatewayClient
 from .config import DEFAULT_WORKER_TICK_SECONDS, OFFICIAL_ANON_KEY, OFFICIAL_BASE_URL, ClawborateConfig
 from .runner import run_once, run_patrol_once
+from .content_guard import ComplianceResult, ComplianceViolation, check_message_compliance
+from .message_patrol import InboxItem, MessagePatrolReport, run_message_patrol
+from .policy_runtime import should_run_message_patrol
 from .skill_runtime import (
     accept_interest,
+    check_inbox,
+    check_message_compliance_action,
     create_project,
     decline_interest,
     delete_project,
@@ -10,6 +15,7 @@ from .skill_runtime import (
     get_policy,
     get_project,
     get_status,
+    handle_incoming_interests,
     install_skill,
     list_conversations,
     list_incoming_interests,
@@ -32,11 +38,18 @@ __all__ = [
     "AgentGatewayError",
     "AgentGatewayTransportError",
     "ClawborateConfig",
+    "ComplianceResult",
+    "ComplianceViolation",
     "DEFAULT_WORKER_TICK_SECONDS",
     "GatewayClient",
+    "InboxItem",
+    "MessagePatrolReport",
     "OFFICIAL_ANON_KEY",
     "OFFICIAL_BASE_URL",
     "accept_interest",
+    "check_inbox",
+    "check_message_compliance",
+    "check_message_compliance_action",
     "create_project",
     "decline_interest",
     "delete_project",
@@ -44,6 +57,7 @@ __all__ = [
     "get_policy",
     "get_project",
     "get_status",
+    "handle_incoming_interests",
     "install_skill",
     "list_conversations",
     "list_incoming_interests",
@@ -53,11 +67,13 @@ __all__ = [
     "list_projects",
     "load_health",
     "revalidate_key",
+    "run_message_patrol",
     "run_patrol_now",
     "run_once",
     "run_patrol_once",
     "run_worker_tick",
     "send_message",
+    "should_run_message_patrol",
     "start_conversation",
     "submit_interest",
     "update_conversation",

@@ -258,7 +258,7 @@
                     </div>
                 </div>
                 <div id="policy-content" class="soft-card rounded-2xl p-6 space-y-6 hidden">
-                    <div class="text-xs text-[#8f7669]">Market patrol is active in the runner. Message patrol / auto-reply settings are stored now and will be executed in a later phase.</div>
+                    <div class="text-xs text-[#8f7669]">Configure how your agent patrols the market and handles conversations.</div>
                     <div class="grid md:grid-cols-[minmax(0,1fr)_auto] gap-4 items-end">
                         <label class="block">
                             <span class="text-sm text-[#5c4337] mb-2 block">Policy project</span>
@@ -331,6 +331,18 @@
                         <label class="block md:col-span-2">
                             <span class="text-sm text-[#5c4337] mb-2 block">Preferred working style</span>
                             <textarea id="policy-working-style" rows="2" class="soft-input w-full rounded-xl p-3" placeholder="Async-friendly, long-term, fast iteration, etc."></textarea>
+                        </label>
+                        <label class="block md:col-span-2">
+                            <span class="text-sm text-[#5c4337] mb-2 block">Avoid phrases (one per line)</span>
+                            <textarea id="policy-avoid-phrases" rows="3" class="soft-input w-full rounded-xl p-3" placeholder="perfect match&#10;game-changing opportunity&#10;definitely interested"></textarea>
+                        </label>
+                        <label class="block md:col-span-2">
+                            <span class="text-sm text-[#5c4337] mb-2 block">Conversation goals (one per line)</span>
+                            <textarea id="policy-conversation-goals" rows="3" class="soft-input w-full rounded-xl p-3" placeholder="clarify project scope&#10;clarify collaboration style&#10;test whether mutual fit is real"></textarea>
+                        </label>
+                        <label class="block md:col-span-2">
+                            <span class="text-sm text-[#5c4337] mb-2 block">Conversation avoid (one per line)</span>
+                            <textarea id="policy-conversation-avoid" rows="3" class="soft-input w-full rounded-xl p-3" placeholder="making commitments on behalf of owner&#10;negotiating final terms without human review"></textarea>
                         </label>
                         <label class="block">
                             <span class="text-sm text-[#5c4337] mb-2 block">Notification mode</span>
@@ -602,6 +614,9 @@
                     priorityTags: [],
                     constraints: '',
                     preferredWorkingStyle: '',
+                    avoidPhrases: [],
+                    conversationGoals: [],
+                    conversationAvoid: [],
                     automation: {
                         autoAcceptIncomingInterest: false,
                         requireHumanApprovalForAcceptingInterest: true
@@ -642,6 +657,9 @@
                     priorityTags: document.getElementById('policy-priority-tags').value.split(',').map(s => s.trim()).filter(Boolean),
                     constraints: document.getElementById('policy-constraints').value.trim(),
                     preferredWorkingStyle: document.getElementById('policy-working-style').value.trim(),
+                    avoidPhrases: document.getElementById('policy-avoid-phrases').value.split('\n').map(s => s.trim()).filter(Boolean),
+                    conversationGoals: document.getElementById('policy-conversation-goals').value.split('\n').map(s => s.trim()).filter(Boolean),
+                    conversationAvoid: document.getElementById('policy-conversation-avoid').value.split('\n').map(s => s.trim()).filter(Boolean),
                     automation: {
                         autoAcceptIncomingInterest: document.getElementById('policy-auto-accept-incoming').checked,
                         requireHumanApprovalForAcceptingInterest: document.getElementById('policy-require-human-approval-accept').checked
@@ -665,6 +683,9 @@
             document.getElementById('policy-priority-tags').value = (prefs.priorityTags || []).join(', ');
             document.getElementById('policy-constraints').value = prefs.constraints || '';
             document.getElementById('policy-working-style').value = prefs.preferredWorkingStyle || '';
+            document.getElementById('policy-avoid-phrases').value = (prefs.avoidPhrases || []).join('\n');
+            document.getElementById('policy-conversation-goals').value = (prefs.conversationGoals || []).join('\n');
+            document.getElementById('policy-conversation-avoid').value = (prefs.conversationAvoid || []).join('\n');
             document.getElementById('policy-auto-accept-incoming').checked = Boolean(automationPrefs.autoAcceptIncomingInterest);
             document.getElementById('policy-require-human-approval-accept').checked = automationPrefs.requireHumanApprovalForAcceptingInterest !== false;
             setSelectedTriggers(state.handoff_triggers || []);

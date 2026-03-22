@@ -45,6 +45,12 @@ MARKET_INTERVAL_MINUTES = {
     "1h": 60,
 }
 
+MESSAGE_INTERVAL_MINUTES = {
+    "5m": 5,
+    "10m": 10,
+    "30m": 30,
+}
+
 DISALLOWED_PREFIXES = ("no ", "not ", "avoid ", "without ", "must not ")
 
 
@@ -134,7 +140,7 @@ def should_run_market_patrol(
 
     patrol_scope = row.get("patrol_scope")
     if patrol_scope == "messages":
-        return False, "messages_scope_not_implemented"
+        return False, "messages_only_scope"
     if patrol_scope not in {"market", "both"}:
         return False, "unsupported_scope"
 
@@ -147,6 +153,43 @@ def should_run_market_patrol(
         return True, "first_run"
 
     if now >= last_run_dt + timedelta(minutes=interval_minutes):
+        return True, "interval_elapsed"
+    return False, "not_due"
+
+
+def message_interval_minutes(value: str | None) -> int | None:
+    if not value:
+        return None
+    return MESSAGE_INTERVAL_MINUTES.get(value)
+
+
+def should_run_message_patrol(
+    policy_row: dict[str, Any] | None,
+    last_message_run_at: str | None,
+    *,
+    now: datetime | None = None,
+) -> tuple[bool, str]:
+    row = coerce_db_policy_row(policy_row)
+    now = now or datetime.now(timezone.utc)
+
+    if not row.get("is_active", True):
+        return False, "inactive"
+
+    patrol_scope = row.get("patrol_scope")
+    if patrol_scope == "market":
+        return False, "market_only_scope"
+    if patrol_scope not in {"messages", "both"}:
+        return False, "unsupported_scope"
+
+    interval = message_interval_minutes(row.get("message_patrol_interval"))
+    if interval is None:
+        return False, "manual_interval"
+
+    last_run_dt = parse_timestamp(last_message_run_at)
+    if last_run_dt is None:
+        return True, "first_run"
+
+    if now >= last_run_dt + timedelta(minutes=interval):
         return True, "interval_elapsed"
     return False, "not_due"
 
@@ -165,40 +208,53 @@ def db_policy_to_runtime_bundle(
     disallowed_patterns = [phrase for phrase in constraint_phrases if phrase.lower().startswith(DISALLOWED_PREFIXES)]
     must_have_phrases = [phrase for phrase in constraint_phrases if phrase not in disallowed_patterns]
 
+    # New fields from collaborator_preferences
+    avoid_phrases = _normalize_text_list(prefs.get("avoidPhrases"))
+    conversation_goals = _normalize_text_list(prefs.get("conversationGoals"))
+    conversation_avoid = _normalize_text_list(prefs.get("conversationAvoid"))
+
     triggers = set(row.get("handoff_triggers") or [])
     before_interest = "before_interest" in triggers
     high_value_conversation = "high_value_conversation" in triggers
+    automation_prefs = prefs.get("automation") or {}
     interval_minutes = market_interval_minutes(row.get("market_patrol_interval"))
     default_scan_strategy = cast(dict[str, Any], DEFAULT_POLICY["scanStrategy"])
     default_scan_interval_minutes = int(default_scan_strategy.get("scanIntervalMinutes", 180))
 
-    effective_policy = deep_merge(
-        copy.deepcopy(DEFAULT_POLICY),
-        {
-            "scanStrategy": {
-                "enabled": bool(row.get("is_active", True)) and interval_minutes is not None,
-                "scanIntervalMinutes": interval_minutes or default_scan_interval_minutes,
-            },
-            "preferences": {
-                "prioritizeTags": priority_tags,
-                "preferredCollaborationStyle": preferred_styles,
-            },
-            "hardConstraints": {
-                "disallowedPatterns": disallowed_patterns,
-                "mustHaveAtLeastOne": must_have_phrases,
-            },
-            "automation": {
-                "autoSubmitInterest": row.get("interest_policy") == "auto_send_high_confidence" and not before_interest,
-                "requireHumanApprovalForInterest": (
-                    row.get("interest_policy") != "auto_send_high_confidence" or before_interest
-                ),
-                "autoStartConversation": not high_value_conversation,
-                "requireHumanApprovalForConversation": high_value_conversation,
-                "autoAcceptIncomingInterest": False,
-                "requireHumanApprovalForAcceptingInterest": True,
-            },
+    policy_override: dict[str, Any] = {
+        "scanStrategy": {
+            "enabled": bool(row.get("is_active", True)) and interval_minutes is not None,
+            "scanIntervalMinutes": interval_minutes or default_scan_interval_minutes,
         },
-    )
+        "preferences": {
+            "prioritizeTags": priority_tags,
+            "preferredCollaborationStyle": preferred_styles,
+        },
+        "hardConstraints": {
+            "disallowedPatterns": disallowed_patterns,
+            "mustHaveAtLeastOne": must_have_phrases,
+        },
+        "automation": {
+            "autoSubmitInterest": row.get("interest_policy") == "auto_send_high_confidence" and not before_interest,
+            "requireHumanApprovalForInterest": (
+                row.get("interest_policy") != "auto_send_high_confidence" or before_interest
+            ),
+            "autoStartConversation": not high_value_conversation,
+            "requireHumanApprovalForConversation": high_value_conversation,
+            "autoAcceptIncomingInterest": bool(automation_prefs.get("autoAcceptIncomingInterest", False)),
+            "requireHumanApprovalForAcceptingInterest": automation_prefs.get(
+                "requireHumanApprovalForAcceptingInterest", True
+            ),
+        },
+    }
+    if avoid_phrases:
+        policy_override["messaging"] = {"avoidPhrases": avoid_phrases}
+    if conversation_goals:
+        policy_override.setdefault("conversationPolicy", {})["goals"] = conversation_goals
+    if conversation_avoid:
+        policy_override.setdefault("conversationPolicy", {})["avoid"] = conversation_avoid
+
+    effective_policy = deep_merge(copy.deepcopy(DEFAULT_POLICY), policy_override)
 
     return {
         "row": row,
@@ -209,17 +265,16 @@ def db_policy_to_runtime_bundle(
             "market_patrol_interval": row.get("market_patrol_interval"),
             "message_patrol_interval": row.get("message_patrol_interval"),
             "patrol_scope": row.get("patrol_scope"),
+            "notification_mode": row.get("notification_mode"),
             "before_interest": before_interest,
             "high_value_conversation": high_value_conversation,
-            "message_patrol_implemented": False,
+            "before_contact_share": "before_contact_share" in triggers,
+            "before_commitment": "before_commitment" in triggers,
+            "message_patrol_implemented": True,
             "auto_send_confidence_threshold": 0.82,
             "metadata_only_fields": {
                 "project_mode": row.get("project_mode"),
-                "notification_mode": row.get("notification_mode"),
-                "before_contact_share": "before_contact_share" in triggers,
-                "before_commitment": "before_commitment" in triggers,
                 "human_handoff_only": "human_handoff_only" in triggers,
-                "autoAcceptIncomingInterest": False,
             },
         },
     }

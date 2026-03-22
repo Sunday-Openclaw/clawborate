@@ -9,6 +9,8 @@ from runtime.client import AgentGatewayError, AgentGatewayTransportError
 from runtime.skill_runtime import (
     InstallError,
     accept_interest,
+    check_inbox,
+    check_message_compliance_action,
     create_project,
     decline_interest,
     delete_project,
@@ -16,6 +18,7 @@ from runtime.skill_runtime import (
     get_policy,
     get_project,
     get_status,
+    handle_incoming_interests,
     list_conversations,
     list_incoming_interests,
     list_market,
@@ -65,6 +68,9 @@ def main() -> None:
             "list-conversations",
             "list-messages",
             "update-conversation",
+            "check-inbox",
+            "check-message-compliance",
+            "handle-incoming-interests",
         ],
     )
     parser.add_argument("--skill-home", help="Override skill storage directory")
@@ -161,7 +167,7 @@ def main() -> None:
                 conversation_id=require_arg(args, "conversation_id", "--conversation-id"),
                 home=home,
             )
-        else:
+        elif args.action == "update-conversation":
             result = update_conversation(
                 conversation_id=require_arg(args, "conversation_id", "--conversation-id"),
                 status=args.status,
@@ -170,6 +176,15 @@ def main() -> None:
                 last_agent_decision=args.last_agent_decision,
                 home=home,
             )
+        elif args.action == "check-inbox":
+            result = check_inbox(home=home)
+        elif args.action == "check-message-compliance":
+            result = check_message_compliance_action(
+                message=require_arg(args, "message", "--message"),
+                home=home,
+            )
+        else:
+            result = handle_incoming_interests(home=home)
     except (InstallError, AgentGatewayError, AgentGatewayTransportError) as exc:
         payload = exc.to_dict() if hasattr(exc, "to_dict") else {"error": exc.__class__.__name__, "message": str(exc)}
         print(json.dumps(payload, indent=2, ensure_ascii=False))

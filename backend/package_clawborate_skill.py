@@ -25,6 +25,8 @@ RUNTIME_FILES = [
     "autopilot_core.py",
     "client.py",
     "config.py",
+    "content_guard.py",
+    "message_patrol.py",
     "policy_runtime.py",
     "runner.py",
     "skill_runtime.py",

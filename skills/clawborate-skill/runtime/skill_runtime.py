@@ -1,16 +1,19 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, cast
 
 from .client import AgentGatewayError, AgentGatewayTransportError, GatewayClient
 from .config import ClawborateConfig
+from .content_guard import check_message_compliance
+from .message_patrol import run_message_patrol
+from .policy_runtime import db_policy_to_runtime_bundle
 from .runner import run_patrol_once
 from .storage import StorageLayout, load_health, load_json, save_json, write_health
-
 
 SKILL_NAME = "clawborate-skill"
 SECRET_NAME = "clawborate_agent_key"
@@ -37,6 +40,9 @@ ACTION_NAMES = [
     "clawborate.list_conversations",
     "clawborate.list_messages",
     "clawborate.update_conversation",
+    "clawborate.check_inbox",
+    "clawborate.check_message_compliance",
+    "clawborate.handle_incoming_interests",
 ]
 
 
@@ -68,7 +74,7 @@ class FileSecretStore:
 class ManifestRegistrar:
     def __init__(self, path: Path):
         self.path = path
-        self.payload = {"skill_name": SKILL_NAME, "worker": {}, "actions": []}
+        self.payload: dict[str, Any] = {"skill_name": SKILL_NAME, "worker": {}, "actions": []}
 
     def register_worker(self, *, entrypoint: str, tick_seconds: int) -> None:
         self.payload["worker"] = {
@@ -160,6 +166,9 @@ def _registration_actions() -> list[dict[str, Any]]:
         {"name": "clawborate.list_conversations", "entrypoint": "scripts/actions.py", "argv": ["list-conversations"]},
         {"name": "clawborate.list_messages", "entrypoint": "scripts/actions.py", "argv": ["list-messages"]},
         {"name": "clawborate.update_conversation", "entrypoint": "scripts/actions.py", "argv": ["update-conversation"]},
+        {"name": "clawborate.check_inbox", "entrypoint": "scripts/actions.py", "argv": ["check-inbox"]},
+        {"name": "clawborate.check_message_compliance", "entrypoint": "scripts/actions.py", "argv": ["check-message-compliance"]},
+        {"name": "clawborate.handle_incoming_interests", "entrypoint": "scripts/actions.py", "argv": ["handle-incoming-interests"]},
     ]
 
 
@@ -326,7 +335,7 @@ def get_status(*, home: Path | None = None) -> dict[str, Any]:
 
 def get_latest_report(*, home: Path | None = None) -> dict[str, Any]:
     context = load_installed_context(home=home)
-    return load_json(context.layout.latest_report_path, {"mode": "not_run_yet", "projects": []})
+    return cast(dict[str, Any], load_json(context.layout.latest_report_path, {"mode": "not_run_yet", "projects": []}))
 
 
 def list_projects(
@@ -503,8 +512,23 @@ def send_message(
     client_factory: Callable[[str, str, str], GatewayClient] | None = None,
 ) -> dict[str, Any]:
     _, client = _load_context_and_client(home=home, client_factory=client_factory)
+
+    # Content Guard: validate message against policy before sending
+    policy_row = client.get_policy()
+    if policy_row:
+        bundle = db_policy_to_runtime_bundle(policy_row)
+        triggers = set(bundle["row"].get("handoff_triggers") or [])
+        compliance = check_message_compliance(message, bundle["effective_policy"], triggers)
+        if not compliance.passed:
+            return {
+                "ok": False,
+                "blocked": True,
+                "violations": [v.to_dict() for v in compliance.violations],
+                "message": "Message blocked by policy. Modify content and retry.",
+            }
+
     result = client.send_message(conversation_id=conversation_id, message=message, agent_name=agent_name)
-    return {"ok": True, "result": result}
+    return {"ok": True, "result": result, "compliance_check": "passed"}
 
 
 def list_conversations(
@@ -545,6 +569,82 @@ def update_conversation(
         last_agent_decision=last_agent_decision,
     )
     return {"ok": True, "result": result}
+
+
+def check_inbox(
+    *,
+    home: Path | None = None,
+    client_factory: Callable[[str, str, str], GatewayClient] | None = None,
+) -> dict[str, Any]:
+    context, client = _load_context_and_client(home=home, client_factory=client_factory)
+    projects = client.list_my_projects(limit=200)
+    all_items: list[dict[str, Any]] = []
+    state = load_json(context.layout.state_path, {})
+    conversations = client.list_conversations()
+
+    for project in projects or []:
+        project_id = project.get("id")
+        policy_row = client.get_policy(project_id=project_id)
+        bundle = db_policy_to_runtime_bundle(
+            policy_row, project_id=project_id, owner_user_id=project.get("user_id"),
+        )
+        report = run_message_patrol(
+            agent_user_id=project.get("user_id", ""),
+            conversations=conversations or [],
+            policy_bundle=bundle,
+            conversation_state=state.get("conversations", {}),
+            client=client,
+        )
+        all_items.extend(item.to_dict() for item in report.items_needing_attention)
+        for conv_id, updates in report.state_updates.items():
+            state.setdefault("conversations", {})[conv_id] = updates
+
+    save_json(context.layout.state_path, state)
+    return {"ok": True, "inbox_items": all_items, "total": len(all_items)}
+
+
+def check_message_compliance_action(
+    *,
+    message: str,
+    home: Path | None = None,
+    client_factory: Callable[[str, str, str], GatewayClient] | None = None,
+) -> dict[str, Any]:
+    _, client = _load_context_and_client(home=home, client_factory=client_factory)
+    policy_row = client.get_policy()
+    if not policy_row:
+        return {"ok": True, "passed": True, "violations": [], "message": "No policy found, all content allowed."}
+    bundle = db_policy_to_runtime_bundle(policy_row)
+    triggers = set(bundle["row"].get("handoff_triggers") or [])
+    result = check_message_compliance(message, bundle["effective_policy"], triggers)
+    return {"ok": True, "passed": result.passed, "violations": [v.to_dict() for v in result.violations]}
+
+
+def handle_incoming_interests(
+    *,
+    home: Path | None = None,
+    client_factory: Callable[[str, str, str], GatewayClient] | None = None,
+) -> dict[str, Any]:
+    _, client = _load_context_and_client(home=home, client_factory=client_factory)
+    incoming = client.list_incoming_interests()
+    open_incoming = [i for i in (incoming or []) if i.get("status") == "open"]
+    if not open_incoming:
+        return {"ok": True, "processed": 0, "results": []}
+
+    policy_row = client.get_policy()
+    bundle = db_policy_to_runtime_bundle(policy_row)
+    auto_accept = bundle["effective_policy"].get("automation", {}).get("autoAcceptIncomingInterest", False)
+    require_approval = bundle["effective_policy"].get("automation", {}).get(
+        "requireHumanApprovalForAcceptingInterest", True,
+    )
+
+    results: list[dict[str, Any]] = []
+    for interest in open_incoming:
+        if auto_accept and not require_approval:
+            result = client.accept_interest(interest["id"])
+            results.append({"interest_id": interest["id"], "action": "auto_accepted", "result": result})
+        else:
+            results.append({"interest_id": interest["id"], "action": "needs_human"})
+    return {"ok": True, "processed": len(results), "results": results}
 
 
 def revalidate_key(
@@ -601,12 +701,15 @@ __all__ = [
     "ACTION_NAMES",
     "DEFAULT_HOME_ENV",
     "accept_interest",
+    "check_inbox",
+    "check_message_compliance_action",
     "create_project",
     "decline_interest",
     "delete_project",
     "FileSecretStore",
     "get_policy",
     "get_project",
+    "handle_incoming_interests",
     "InstallError",
     "InstalledContext",
     "list_conversations",

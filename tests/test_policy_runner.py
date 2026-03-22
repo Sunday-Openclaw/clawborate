@@ -17,8 +17,8 @@ def test_run_once_skips_manual_and_messages_scope_projects(tmp_path, monkeypatch
         policy_runner,
         "get_policy",
         lambda *args, **kwargs: {
-            "project-manual": {"market_patrol_interval": "manual", "patrol_scope": "market"},
-            "project-messages": {"market_patrol_interval": "10m", "patrol_scope": "messages"},
+            "project-manual": {"market_patrol_interval": "manual", "patrol_scope": "market", "notification_mode": "verbose"},
+            "project-messages": {"market_patrol_interval": "10m", "patrol_scope": "messages", "message_patrol_interval": "manual", "notification_mode": "verbose"},
         }[kwargs.get("project_id")],
     )
     monkeypatch.setattr(policy_runner, "list_market", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("unexpected")))
@@ -50,7 +50,7 @@ def test_run_once_skips_manual_and_messages_scope_projects(tmp_path, monkeypatch
             "reason": "manual_interval",
             "execution": {
                 "interest_mode": "draft_then_confirm",
-                "message_patrol_status": "not_implemented",
+                "message_patrol_status": "market_only_scope",
             },
         },
         {
@@ -58,10 +58,10 @@ def test_run_once_skips_manual_and_messages_scope_projects(tmp_path, monkeypatch
             "project_name": "Messages",
             "policy_source": "database",
             "status": "skipped",
-            "reason": "messages_scope_not_implemented",
+            "reason": "messages_only_scope",
             "execution": {
                 "interest_mode": "draft_then_confirm",
-                "message_patrol_status": "not_implemented",
+                "message_patrol_status": "manual_interval",
             },
         },
     ]
@@ -236,6 +236,11 @@ def test_run_once_executes_policy_and_writes_reports(tmp_path, monkeypatch):
         "update_conversation",
         lambda **kwargs: updated_conversations.append(kwargs) or {"id": kwargs["conversation_id"], "status": kwargs["status"]},
     )
+    monkeypatch.setattr(
+        policy_runner,
+        "list_incoming_interests",
+        lambda *args, **kwargs: [],
+    )
 
     now = datetime(2026, 3, 21, 12, 0, tzinfo=timezone.utc)
     summary = policy_runner.run_once(
@@ -291,7 +296,7 @@ def test_run_once_executes_policy_and_writes_reports(tmp_path, monkeypatch):
     assert len(project_summary["execution"]["interest_submissions"]) == 1
     assert len(project_summary["execution"]["started_conversations"]) == 1
     assert len(project_summary["execution"]["conversation_state_updates"]) == 2
-    assert project_summary["execution"]["message_patrol_status"] == "not_implemented"
+    assert project_summary["execution"]["message_patrol_status"] == "market_only_scope"
 
     state = json.loads((tmp_path / "state.json").read_text(encoding="utf-8"))
     assert state["projects"]["project-1"]["last_market_run_at"] == now.isoformat()

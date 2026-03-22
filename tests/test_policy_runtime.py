@@ -40,21 +40,21 @@ def test_db_policy_to_runtime_bundle_maps_policy_fields_and_overrides_auto_send(
     assert effective_policy["automation"]["requireHumanApprovalForInterest"] is True
     assert effective_policy["automation"]["autoStartConversation"] is False
     assert effective_policy["automation"]["requireHumanApprovalForConversation"] is True
-    assert effective_policy["automation"]["autoAcceptIncomingInterest"] is False
-    assert effective_policy["automation"]["requireHumanApprovalForAcceptingInterest"] is True
+    assert effective_policy["automation"]["autoAcceptIncomingInterest"] is True
+    assert effective_policy["automation"]["requireHumanApprovalForAcceptingInterest"] is False
 
     assert execution["interest_policy"] == "auto_send_high_confidence"
     assert execution["reply_policy"] == "notify_only"
     assert execution["before_interest"] is True
     assert execution["high_value_conversation"] is True
+    assert execution["before_contact_share"] is False
+    assert execution["before_commitment"] is False
+    assert execution["notification_mode"] == "verbose"
+    assert execution["message_patrol_implemented"] is True
     assert execution["auto_send_confidence_threshold"] == 0.82
     assert execution["metadata_only_fields"] == {
         "project_mode": "startup",
-        "notification_mode": "verbose",
-        "before_contact_share": False,
-        "before_commitment": False,
         "human_handoff_only": False,
-        "autoAcceptIncomingInterest": False,
     }
 
 
@@ -64,7 +64,7 @@ def test_should_run_market_patrol_handles_manual_messages_inactive_and_due_windo
     assert should_run_market_patrol({"is_active": False}, None, now=now) == (False, "inactive")
     assert should_run_market_patrol({"patrol_scope": "messages"}, None, now=now) == (
         False,
-        "messages_scope_not_implemented",
+        "messages_only_scope",
     )
     assert should_run_market_patrol({"market_patrol_interval": "manual"}, None, now=now) == (
         False,
