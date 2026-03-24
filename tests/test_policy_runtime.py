@@ -1,29 +1,24 @@
 from datetime import datetime, timedelta, timezone
 
-from skill_runtime.policy_runtime import db_policy_to_runtime_bundle, should_run_market_patrol
+from skill_runtime.policy_runtime import db_policy_to_runtime_bundle, should_run_market_patrol, should_run_message_patrol
 
 
-def test_db_policy_to_runtime_bundle_maps_policy_fields_and_overrides_auto_send():
+def test_db_policy_to_runtime_bundle_maps_new_fields_and_legacy_fallbacks():
     bundle = db_policy_to_runtime_bundle(
         {
             "project_id": "project-1",
             "owner_user_id": "owner-1",
             "market_patrol_interval": "30m",
             "message_patrol_interval": "10m",
-            "patrol_scope": "both",
             "interest_policy": "auto_send_high_confidence",
-            "reply_policy": "notify_only",
-            "handoff_triggers": ["before_interest", "high_value_conversation"],
-            "project_mode": "startup",
-            "notification_mode": "verbose",
+            "reply_policy": "draft_then_confirm",
             "collaborator_preferences": {
                 "priorityTags": ["ai", "biology"],
-                "constraints": "avoid crypto; async friendly\nserious team",
-                "preferredWorkingStyle": "async-first, fast iteration",
-                "automation": {
-                    "autoAcceptIncomingInterest": True,
-                    "requireHumanApprovalForAcceptingInterest": False,
-                },
+                "constraints": "avoid crypto; async friendly",
+                "preferredWorkingStyle": "async-first",
+                "avoidPhrases": ["guaranteed fit"],
+                "conversationGoals": ["clarify scope"],
+                "conversationAvoid": ["making commitments"],
             },
         }
     )
@@ -31,45 +26,25 @@ def test_db_policy_to_runtime_bundle_maps_policy_fields_and_overrides_auto_send(
     effective_policy = bundle["effective_policy"]
     execution = bundle["execution"]
 
-    assert effective_policy["preferences"]["prioritizeTags"] == ["ai", "biology"]
-    assert effective_policy["preferences"]["preferredCollaborationStyle"] == ["async-first", "fast iteration"]
-    assert effective_policy["hardConstraints"]["disallowedPatterns"] == ["avoid crypto"]
-    assert effective_policy["hardConstraints"]["mustHaveAtLeastOne"] == ["async friendly", "serious team"]
+    assert execution["interest_behavior"] == "direct_send"
+    assert execution["reply_behavior"] == "notify_then_send"
+    assert execution["market_patrol_interval"] == "30m"
+    assert execution["message_patrol_interval"] == "10m"
+    assert "Prioritize projects or conversations related to: ai, biology." in execution["extra_requirements"]
+    assert "Legacy constraints: avoid crypto; async friendly" in execution["extra_requirements"]
 
-    assert effective_policy["automation"]["autoSubmitInterest"] is False
-    assert effective_policy["automation"]["requireHumanApprovalForInterest"] is True
-    assert effective_policy["automation"]["autoStartConversation"] is False
-    assert effective_policy["automation"]["requireHumanApprovalForConversation"] is True
-    assert effective_policy["automation"]["autoAcceptIncomingInterest"] is True
-    assert effective_policy["automation"]["requireHumanApprovalForAcceptingInterest"] is False
-
-    assert execution["interest_policy"] == "auto_send_high_confidence"
-    assert execution["reply_policy"] == "notify_only"
-    assert execution["before_interest"] is True
-    assert execution["high_value_conversation"] is True
-    assert execution["before_contact_share"] is False
-    assert execution["before_commitment"] is False
-    assert execution["notification_mode"] == "verbose"
-    assert execution["message_patrol_implemented"] is True
-    assert execution["auto_send_confidence_threshold"] == 0.82
-    assert execution["metadata_only_fields"] == {
-        "project_mode": "startup",
-        "human_handoff_only": False,
-    }
+    assert effective_policy["agentContext"]["requireAgentJudgment"] is True
+    assert "async-first" in effective_policy["agentContext"]["extraRequirements"]
+    assert effective_policy["messaging"]["avoidPhrases"] == ["guaranteed fit", "crypto"]
+    assert effective_policy["conversationPolicy"]["goals"] == ["clarify scope"]
+    assert effective_policy["conversationPolicy"]["avoid"] == ["making commitments"]
 
 
-def test_should_run_market_patrol_handles_manual_messages_inactive_and_due_windows():
+def test_should_run_market_and_message_patrol_handle_due_windows():
     now = datetime(2026, 3, 21, 12, 0, tzinfo=timezone.utc)
 
     assert should_run_market_patrol({"is_active": False}, None, now=now) == (False, "inactive")
-    assert should_run_market_patrol({"patrol_scope": "messages"}, None, now=now) == (
-        False,
-        "messages_only_scope",
-    )
-    assert should_run_market_patrol({"market_patrol_interval": "manual"}, None, now=now) == (
-        False,
-        "manual_interval",
-    )
+    assert should_run_market_patrol({"market_patrol_interval": "manual"}, None, now=now) == (False, "manual_interval")
     assert should_run_market_patrol({"market_patrol_interval": "10m"}, None, now=now) == (True, "first_run")
     assert should_run_market_patrol(
         {"market_patrol_interval": "10m"},
@@ -82,3 +57,18 @@ def test_should_run_market_patrol_handles_manual_messages_inactive_and_due_windo
         now=now,
     ) == (False, "not_due")
 
+    assert should_run_message_patrol({"message_patrol_interval": "manual"}, None, now=now) == (
+        False,
+        "manual_interval",
+    )
+    assert should_run_message_patrol({"message_patrol_interval": "5m"}, None, now=now) == (True, "first_run")
+    assert should_run_message_patrol(
+        {"message_patrol_interval": "5m"},
+        (now - timedelta(minutes=6)).isoformat(),
+        now=now,
+    ) == (True, "interval_elapsed")
+    assert should_run_message_patrol(
+        {"message_patrol_interval": "10m"},
+        (now - timedelta(minutes=4)).isoformat(),
+        now=now,
+    ) == (False, "not_due")

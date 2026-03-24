@@ -9,23 +9,31 @@ from runtime.client import AgentGatewayError, AgentGatewayTransportError
 from runtime.skill_runtime import (
     InstallError,
     accept_interest,
+    apply_conversation_decision,
+    apply_market_decision,
     check_inbox,
     check_message_compliance_action,
     create_project,
     decline_interest,
     delete_project,
+    get_bootstrap_plan,
     get_latest_report,
+    get_patrol_brief,
     get_policy,
     get_project,
     get_status,
     handle_incoming_interests,
+    list_conversation_messages,
     list_conversations,
     list_incoming_interests,
     list_market,
+    list_market_page,
     list_messages,
     list_outgoing_interests,
+    list_project_conversations,
     list_projects,
     revalidate_key,
+    resolve_pending_action,
     run_patrol_now,
     send_message,
     start_conversation,
@@ -71,6 +79,14 @@ def main() -> None:
             "check-inbox",
             "check-message-compliance",
             "handle-incoming-interests",
+            "get-patrol-brief",
+            "list-market-page",
+            "list-project-conversations",
+            "list-conversation-messages",
+            "apply-market-decision",
+            "apply-conversation-decision",
+            "resolve-pending-action",
+            "get-bootstrap-plan",
         ],
     )
     parser.add_argument("--skill-home", help="Override skill storage directory")
@@ -82,14 +98,22 @@ def main() -> None:
     parser.add_argument("--contact", help="Agent contact info")
     parser.add_argument("--message", help="Interest or conversation message")
     parser.add_argument("--limit", type=int, default=20, help="List limit")
+    parser.add_argument("--cursor", type=int, default=0, help="List cursor / offset")
+    parser.add_argument("--max-scan", type=int, default=60, help="Maximum raw market items to scan")
     parser.add_argument("--interest-id", help="Interest ID")
     parser.add_argument("--receiver-user-id", help="Conversation receiver user ID")
     parser.add_argument("--conversation-id", help="Conversation ID")
+    parser.add_argument("--since-id", help="Message ID cursor for conversation reads")
     parser.add_argument("--agent-name", help="Agent display name in sent messages")
     parser.add_argument("--status", help="Conversation status")
     parser.add_argument("--summary-for-owner", help="Conversation summary for owner")
     parser.add_argument("--recommended-next-step", help="Conversation recommended next step")
     parser.add_argument("--last-agent-decision", help="Conversation decision label")
+    parser.add_argument("--source-project-id", help="Source project ID")
+    parser.add_argument("--decision", help="Agent decision")
+    parser.add_argument("--confidence", type=float, help="Decision confidence")
+    parser.add_argument("--reason", help="Decision rationale")
+    parser.add_argument("--override-text", help="Override draft text when resolving a pending action")
     args = parser.parse_args()
 
     home = Path(args.skill_home).expanduser() if args.skill_home else None
@@ -128,7 +152,7 @@ def main() -> None:
         elif args.action == "delete-project":
             result = delete_project(project_id=require_arg(args, "id", "--id"), home=home)
         elif args.action == "list-market":
-            result = list_market(limit=args.limit, home=home)
+            result = list_market(limit=args.limit, cursor=args.cursor, home=home)
         elif args.action == "get-policy":
             result = get_policy(project_id=args.id, home=home)
         elif args.action == "submit-interest":
@@ -136,6 +160,7 @@ def main() -> None:
                 project_id=require_arg(args, "id", "--id"),
                 message=require_arg(args, "message", "--message"),
                 contact=args.contact,
+                source_project_id=args.source_project_id,
                 home=home,
             )
         elif args.action == "accept-interest":
@@ -143,14 +168,15 @@ def main() -> None:
         elif args.action == "decline-interest":
             result = decline_interest(interest_id=require_arg(args, "interest_id", "--interest-id"), home=home)
         elif args.action == "list-incoming-interests":
-            result = list_incoming_interests(home=home)
+            result = list_incoming_interests(project_id=args.id, home=home)
         elif args.action == "list-outgoing-interests":
-            result = list_outgoing_interests(home=home)
+            result = list_outgoing_interests(source_project_id=args.source_project_id, home=home)
         elif args.action == "start-conversation":
             result = start_conversation(
                 project_id=require_arg(args, "id", "--id"),
                 interest_id=require_arg(args, "interest_id", "--interest-id"),
                 receiver_user_id=require_arg(args, "receiver_user_id", "--receiver-user-id"),
+                source_project_id=args.source_project_id,
                 home=home,
             )
         elif args.action == "send-message":
@@ -161,7 +187,7 @@ def main() -> None:
                 home=home,
             )
         elif args.action == "list-conversations":
-            result = list_conversations(home=home)
+            result = list_conversations(project_id=args.id, home=home)
         elif args.action == "list-messages":
             result = list_messages(
                 conversation_id=require_arg(args, "conversation_id", "--conversation-id"),
@@ -183,6 +209,55 @@ def main() -> None:
                 message=require_arg(args, "message", "--message"),
                 home=home,
             )
+        elif args.action == "get-patrol-brief":
+            result = get_patrol_brief(home=home)
+        elif args.action == "list-market-page":
+            result = list_market_page(
+                project_id=require_arg(args, "id", "--id"),
+                cursor=args.cursor,
+                limit=args.limit,
+                max_scan=args.max_scan,
+                home=home,
+            )
+        elif args.action == "list-project-conversations":
+            result = list_project_conversations(project_id=require_arg(args, "id", "--id"), home=home)
+        elif args.action == "list-conversation-messages":
+            result = list_conversation_messages(
+                conversation_id=require_arg(args, "conversation_id", "--conversation-id"),
+                since_id=args.since_id,
+                home=home,
+            )
+        elif args.action == "apply-market-decision":
+            result = apply_market_decision(
+                source_project_id=require_arg(args, "source_project_id", "--source-project-id"),
+                target_project_id=require_arg(args, "id", "--id"),
+                decision=require_arg(args, "decision", "--decision"),
+                confidence=args.confidence,
+                reason=args.reason,
+                opening_message=args.message,
+                home=home,
+            )
+        elif args.action == "apply-conversation-decision":
+            result = apply_conversation_decision(
+                source_project_id=require_arg(args, "source_project_id", "--source-project-id"),
+                conversation_id=require_arg(args, "conversation_id", "--conversation-id"),
+                decision=require_arg(args, "decision", "--decision"),
+                confidence=args.confidence,
+                reason=args.reason,
+                reply_text=args.message,
+                summary_for_owner=args.summary_for_owner,
+                recommended_next_step=args.recommended_next_step,
+                home=home,
+            )
+        elif args.action == "resolve-pending-action":
+            result = resolve_pending_action(
+                action_token=require_arg(args, "id", "--id"),
+                decision=require_arg(args, "decision", "--decision"),
+                override_text=args.override_text,
+                home=home,
+            )
+        elif args.action == "get-bootstrap-plan":
+            result = get_bootstrap_plan(home=home)
         else:
             result = handle_incoming_interests(home=home)
     except (InstallError, AgentGatewayError, AgentGatewayTransportError) as exc:

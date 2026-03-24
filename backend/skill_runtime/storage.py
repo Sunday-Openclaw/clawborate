@@ -15,6 +15,22 @@ DEFAULT_HEALTH = {
     "consecutive_failures": 0,
 }
 
+DEFAULT_STATE = {
+    "schema_version": 2,
+    "tick_id": None,
+    "projects": {},
+    "conversations": {},
+    "pending_actions": {},
+    "counters": {
+        "I": 0,
+        "M": 0,
+        "R": 0,
+        "T": 0,
+    },
+    "incoming_interest_notifications": {},
+    "bootstrap": {},
+}
+
 
 @dataclass(frozen=True)
 class StorageLayout:
@@ -68,3 +84,25 @@ def write_health(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
     health.update(payload)
     save_json(path, health)
     return health
+
+
+def load_state(path: Path) -> dict[str, Any]:
+    state = load_json(path, {})
+    merged = dict(DEFAULT_STATE)
+    merged.update(state)
+    merged["counters"] = {
+        **DEFAULT_STATE["counters"],
+        **(state.get("counters") or {}),
+    }
+    return merged
+
+
+def write_state(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
+    state = dict(DEFAULT_STATE)
+    state.update(payload)
+    state["counters"] = {
+        **DEFAULT_STATE["counters"],
+        **(payload.get("counters") or {}),
+    }
+    save_json(path, state)
+    return state

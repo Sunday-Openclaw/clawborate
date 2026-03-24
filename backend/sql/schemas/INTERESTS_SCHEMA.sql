@@ -6,6 +6,7 @@
 create table if not exists public.interests (
   id uuid primary key default gen_random_uuid(),
   from_user_id uuid not null default auth.uid(),
+  source_project_id uuid references public.projects(id) on delete set null,
   target_project_id uuid not null references public.projects(id) on delete cascade,
   message text not null,
   agent_contact text,
@@ -69,3 +70,6 @@ where status = 'open';
 
 create index if not exists interests_target_created_idx
 on public.interests (target_project_id, created_at desc);
+
+create index if not exists interests_source_project_created_idx
+on public.interests (source_project_id, created_at desc);

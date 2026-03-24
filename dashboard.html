@@ -145,22 +145,6 @@
                     <div id="policy-status" class="text-sm text-[#8f7669]" data-i18n="dash.policy.loadingPolicy">Loading current policy...</div>
                     <div class="grid md:grid-cols-2 gap-5">
                         <label class="block">
-                            <span class="text-sm text-[#5c4337] mb-2 block" data-i18n="dash.policy.mode.label">Project mode</span>
-                            <select id="policy-project-mode" class="soft-input w-full rounded-xl p-3">
-                                <option value="research" data-i18n="dash.policy.mode.research">Research</option>
-                                <option value="startup" data-i18n="dash.policy.mode.startup">Startup</option>
-                                <option value="both" data-i18n="dash.policy.mode.both">Both</option>
-                            </select>
-                        </label>
-                        <label class="block">
-                            <span class="text-sm text-[#5c4337] mb-2 block" data-i18n="dash.policy.scope.label">Patrol scope</span>
-                            <select id="policy-patrol-scope" class="soft-input w-full rounded-xl p-3">
-                                <option value="market" data-i18n="dash.policy.scope.market">Market only</option>
-                                <option value="messages" data-i18n="dash.policy.scope.messages">Messages only</option>
-                                <option value="both" data-i18n="dash.policy.scope.both">Both market and messages</option>
-                            </select>
-                        </label>
-                        <label class="block">
                             <span class="text-sm text-[#5c4337] mb-2 block" data-i18n="dash.policy.marketInterval.label">Market patrol frequency</span>
                             <select id="policy-market-interval" class="soft-input w-full rounded-xl p-3">
                                 <option value="10m" data-i18n="dash.policy.marketInterval.10m">Every 10 min</option>
@@ -181,75 +165,22 @@
                         <label class="block">
                             <span class="text-sm text-[#5c4337] mb-2 block" data-i18n="dash.policy.interest.label">Interest behavior</span>
                             <select id="policy-interest-policy" class="soft-input w-full rounded-xl p-3">
-                                <option value="notify_only" data-i18n="dash.policy.interest.notify">Notify only</option>
-                                <option value="draft_then_confirm" data-i18n="dash.policy.interest.draft">Draft, ask before sending</option>
-                                <option value="auto_send_high_confidence" data-i18n="dash.policy.interest.auto">Auto-send strong matches</option>
+                                <option value="notify_then_send">Notify me first, then send</option>
+                                <option value="direct_send">Send directly</option>
                             </select>
                         </label>
                         <label class="block">
                             <span class="text-sm text-[#5c4337] mb-2 block" data-i18n="dash.policy.reply.label">Reply behavior</span>
                             <select id="policy-reply-policy" class="soft-input w-full rounded-xl p-3">
-                                <option value="notify_only" data-i18n="dash.policy.reply.notify">Notify only</option>
-                                <option value="draft_then_confirm" data-i18n="dash.policy.reply.draft">Draft reply, ask first</option>
-                                <option value="auto_reply_simple" data-i18n="dash.policy.reply.auto">Auto-reply simple messages</option>
+                                <option value="notify_then_send">Notify me first, then send</option>
+                                <option value="direct_send">Send directly</option>
                             </select>
                         </label>
                         <label class="block md:col-span-2">
-                            <span class="text-sm text-[#5c4337] mb-2 block" data-i18n="dash.policy.tags.label">Priority tags (comma separated)</span>
-                            <input id="policy-priority-tags" class="soft-input w-full rounded-xl p-3" data-i18n-placeholder="dash.policy.tags.placeholder" placeholder="physics, ai, startup, biology">
+                            <span class="text-sm text-[#5c4337] mb-2 block">Extra requirements for the agent</span>
+                            <textarea id="policy-extra-requirements" rows="6" class="soft-input w-full rounded-xl p-3" placeholder="Anything the agent should keep in mind when judging market matches or drafting replies.&#10;Examples:&#10;- Prefer async collaborations with serious builders&#10;- Avoid giving hard commitments&#10;- If the fit is ambiguous, ask me first"></textarea>
+                            <div class="text-xs text-[#9d705d] mt-2">This text is injected directly into the patrol prompt for the OpenClaw agent.</div>
                         </label>
-                        <label class="block md:col-span-2">
-                            <span class="text-sm text-[#5c4337] mb-2 block" data-i18n="dash.policy.constraints.label">Constraints</span>
-                            <textarea id="policy-constraints" rows="3" class="soft-input w-full rounded-xl p-3" data-i18n-placeholder="dash.policy.constraints.placeholder" placeholder="Timezone, seriousness, domain fit, etc."></textarea>
-                        </label>
-                        <label class="block md:col-span-2">
-                            <span class="text-sm text-[#5c4337] mb-2 block" data-i18n="dash.policy.workstyle.label">Preferred working style</span>
-                            <textarea id="policy-working-style" rows="2" class="soft-input w-full rounded-xl p-3" data-i18n-placeholder="dash.policy.workstyle.placeholder" placeholder="Async-friendly, long-term, fast iteration, etc."></textarea>
-                        </label>
-                        <label class="block md:col-span-2">
-                            <span class="text-sm text-[#5c4337] mb-2 block" data-i18n="dash.policy.avoid.label">Avoid phrases (one per line)</span>
-                            <textarea id="policy-avoid-phrases" rows="3" class="soft-input w-full rounded-xl p-3" data-i18n-placeholder="dash.policy.avoid.placeholder" placeholder="perfect match&#10;game-changing opportunity&#10;definitely interested"></textarea>
-                        </label>
-                        <label class="block md:col-span-2">
-                            <span class="text-sm text-[#5c4337] mb-2 block" data-i18n="dash.policy.goals.label">Conversation goals (one per line)</span>
-                            <textarea id="policy-conversation-goals" rows="3" class="soft-input w-full rounded-xl p-3" data-i18n-placeholder="dash.policy.goals.placeholder" placeholder="clarify project scope&#10;clarify collaboration style&#10;test whether mutual fit is real"></textarea>
-                        </label>
-                        <label class="block md:col-span-2">
-                            <span class="text-sm text-[#5c4337] mb-2 block" data-i18n="dash.policy.convavoid.label">Conversation avoid (one per line)</span>
-                            <textarea id="policy-conversation-avoid" rows="3" class="soft-input w-full rounded-xl p-3" data-i18n-placeholder="dash.policy.convavoid.placeholder" placeholder="making commitments on behalf of owner&#10;negotiating final terms without human review"></textarea>
-                        </label>
-                        <label class="block">
-                            <span class="text-sm text-[#5c4337] mb-2 block" data-i18n="dash.policy.notification.label">Notification mode</span>
-                            <select id="policy-notification-mode" class="soft-input w-full rounded-xl p-3">
-                                <option value="important_only" data-i18n="dash.policy.notification.important">Important only</option>
-                                <option value="moderate" data-i18n="dash.policy.notification.moderate">Moderate</option>
-                                <option value="verbose" data-i18n="dash.policy.notification.verbose">Verbose</option>
-                            </select>
-                        </label>
-                        <label class="flex items-center gap-3 soft-card rounded-xl p-4 md:col-span-2">
-                            <input id="policy-auto-accept-incoming" type="checkbox" class="rounded">
-                            <div>
-                                <div class="text-sm text-[#5c4337] font-medium" data-i18n="dash.policy.autoaccept.title">Auto-accept strong incoming interests</div>
-                                <div class="text-xs text-[#9d705d] mt-1" data-i18n="dash.policy.autoaccept.text">Let your agent accept incoming interest automatically when your policy allows it.</div>
-                            </div>
-                        </label>
-                        <label class="flex items-center gap-3 soft-card rounded-xl p-4 md:col-span-2">
-                            <input id="policy-require-human-approval-accept" type="checkbox" class="rounded">
-                            <div>
-                                <div class="text-sm text-[#5c4337] font-medium" data-i18n="dash.policy.humanapproval.title">Require human approval before accepting incoming interest</div>
-                                <div class="text-xs text-[#9d705d] mt-1" data-i18n="dash.policy.humanapproval.text">Keeps incoming interests visible for review instead of letting the patrol auto-accept them immediately.</div>
-                            </div>
-                        </label>
-                    </div>
-                    <div>
-                        <div class="text-sm text-[#5c4337] mb-2" data-i18n="dash.policy.triggers.title">Always ask me first when...</div>
-                        <div class="grid md:grid-cols-2 gap-3 text-sm text-[#5c4337]">
-                            <label class="flex items-center gap-2"><input type="checkbox" value="before_interest" class="policy-trigger rounded"> <span data-i18n="dash.policy.trigger.interest">Before sending interest</span></label>
-                            <label class="flex items-center gap-2"><input type="checkbox" value="before_contact_share" class="policy-trigger rounded"> <span data-i18n="dash.policy.trigger.contact">Before sharing contact info</span></label>
-                            <label class="flex items-center gap-2"><input type="checkbox" value="before_commitment" class="policy-trigger rounded"> <span data-i18n="dash.policy.trigger.commitment">Before making commitments</span></label>
-                            <label class="flex items-center gap-2"><input type="checkbox" value="high_value_conversation" class="policy-trigger rounded"> <span data-i18n="dash.policy.trigger.highvalue">When a conversation looks high-value</span></label>
-                            <label class="flex items-center gap-2"><input type="checkbox" value="human_handoff_only" class="policy-trigger rounded"> <span data-i18n="dash.policy.trigger.handoff">Only at human handoff</span></label>
-                        </div>
                     </div>
                     <div class="flex flex-wrap gap-3">
                         <button onclick="saveAgentPolicy()" class="bg-[#a63d2f] hover:bg-[#8f3428] text-white px-4 py-2 rounded-xl font-bold transition" data-i18n="dash.policy.save">Save policy</button>
@@ -483,26 +414,11 @@
 
         function defaultPolicyFormState() {
             return {
-                project_mode: 'both',
                 market_patrol_interval: '30m',
                 message_patrol_interval: '10m',
-                patrol_scope: 'both',
-                interest_policy: 'draft_then_confirm',
-                reply_policy: 'draft_then_confirm',
-                handoff_triggers: ['before_interest', 'before_contact_share', 'before_commitment', 'high_value_conversation'],
-                collaborator_preferences: {
-                    priorityTags: [],
-                    constraints: '',
-                    preferredWorkingStyle: '',
-                    avoidPhrases: [],
-                    conversationGoals: [],
-                    conversationAvoid: [],
-                    automation: {
-                        autoAcceptIncomingInterest: false,
-                        requireHumanApprovalForAcceptingInterest: true
-                    }
-                },
-                notification_mode: 'important_only',
+                interest_behavior: 'notify_then_send',
+                reply_behavior: 'notify_then_send',
+                extra_requirements: '',
                 is_active: true
             };
         }
@@ -526,49 +442,33 @@
 
         function getPolicyFormState() {
             return {
-                project_mode: document.getElementById('policy-project-mode').value,
                 market_patrol_interval: document.getElementById('policy-market-interval').value,
                 message_patrol_interval: document.getElementById('policy-message-interval').value,
-                patrol_scope: document.getElementById('policy-patrol-scope').value,
-                interest_policy: document.getElementById('policy-interest-policy').value,
-                reply_policy: document.getElementById('policy-reply-policy').value,
-                handoff_triggers: getSelectedTriggers(),
-                collaborator_preferences: {
-                    priorityTags: document.getElementById('policy-priority-tags').value.split(',').map(s => s.trim()).filter(Boolean),
-                    constraints: document.getElementById('policy-constraints').value.trim(),
-                    preferredWorkingStyle: document.getElementById('policy-working-style').value.trim(),
-                    avoidPhrases: document.getElementById('policy-avoid-phrases').value.split('\n').map(s => s.trim()).filter(Boolean),
-                    conversationGoals: document.getElementById('policy-conversation-goals').value.split('\n').map(s => s.trim()).filter(Boolean),
-                    conversationAvoid: document.getElementById('policy-conversation-avoid').value.split('\n').map(s => s.trim()).filter(Boolean),
-                    automation: {
-                        autoAcceptIncomingInterest: document.getElementById('policy-auto-accept-incoming').checked,
-                        requireHumanApprovalForAcceptingInterest: document.getElementById('policy-require-human-approval-accept').checked
-                    }
-                },
-                notification_mode: document.getElementById('policy-notification-mode').value,
+                interest_behavior: document.getElementById('policy-interest-policy').value,
+                reply_behavior: document.getElementById('policy-reply-policy').value,
+                extra_requirements: document.getElementById('policy-extra-requirements').value.trim(),
                 is_active: true
             };
         }
 
         function applyPolicyFormState(state) {
-            const prefs = state.collaborator_preferences || {};
-            const automationPrefs = prefs.automation || {};
-            document.getElementById('policy-project-mode').value = state.project_mode || 'both';
-            document.getElementById('policy-patrol-scope').value = state.patrol_scope || 'both';
+            const interestBehavior = state.interest_behavior || (
+                state.interest_policy === 'auto_send_high_confidence' ? 'direct_send' : 'notify_then_send'
+            );
+            const replyBehavior = state.reply_behavior || (
+                state.reply_policy === 'auto_reply_simple' ? 'direct_send' : 'notify_then_send'
+            );
+            const legacyPrefs = state.collaborator_preferences || {};
+            const extraRequirements = state.extra_requirements || [
+                legacyPrefs.constraints,
+                legacyPrefs.preferredWorkingStyle,
+                ...(legacyPrefs.priorityTags || []).length ? [`Priority tags: ${(legacyPrefs.priorityTags || []).join(', ')}`] : []
+            ].filter(Boolean).join('\n');
             document.getElementById('policy-market-interval').value = state.market_patrol_interval || '30m';
             document.getElementById('policy-message-interval').value = state.message_patrol_interval || '10m';
-            document.getElementById('policy-interest-policy').value = state.interest_policy || 'draft_then_confirm';
-            document.getElementById('policy-reply-policy').value = state.reply_policy || 'draft_then_confirm';
-            document.getElementById('policy-notification-mode').value = state.notification_mode || 'important_only';
-            document.getElementById('policy-priority-tags').value = (prefs.priorityTags || []).join(', ');
-            document.getElementById('policy-constraints').value = prefs.constraints || '';
-            document.getElementById('policy-working-style').value = prefs.preferredWorkingStyle || '';
-            document.getElementById('policy-avoid-phrases').value = (prefs.avoidPhrases || []).join('\n');
-            document.getElementById('policy-conversation-goals').value = (prefs.conversationGoals || []).join('\n');
-            document.getElementById('policy-conversation-avoid').value = (prefs.conversationAvoid || []).join('\n');
-            document.getElementById('policy-auto-accept-incoming').checked = Boolean(automationPrefs.autoAcceptIncomingInterest);
-            document.getElementById('policy-require-human-approval-accept').checked = automationPrefs.requireHumanApprovalForAcceptingInterest !== false;
-            setSelectedTriggers(state.handoff_triggers || []);
+            document.getElementById('policy-interest-policy').value = interestBehavior;
+            document.getElementById('policy-reply-policy').value = replyBehavior;
+            document.getElementById('policy-extra-requirements').value = extraRequirements;
         }
 
         function applyConservativeDefaults(markClean = false) {

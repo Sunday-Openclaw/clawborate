@@ -5,15 +5,31 @@ from datetime import datetime, timezone
 
 import pytest
 
-from skill_runtime import ClawborateConfig, get_latest_report, get_status, install_skill, list_projects, revalidate_key, run_worker_tick
+from skill_runtime import (
+    ClawborateConfig,
+    apply_market_decision,
+    get_latest_report,
+    get_patrol_brief,
+    get_status,
+    install_skill,
+    list_projects,
+    resolve_pending_action,
+    revalidate_key,
+    run_worker_tick,
+)
 from skill_runtime.client import AgentGatewayError
 from skill_runtime.skill_runtime import ACTION_NAMES, InstallError
 
 
 class FakeClient:
-    def __init__(self, *, projects=None, error: AgentGatewayError | None = None):
+    def __init__(self, *, projects=None, policies=None, incoming=None, error: AgentGatewayError | None = None):
         self.projects = projects or []
+        self.policies = policies or {}
+        self.incoming = incoming or []
         self.error = error
+        self.submitted = []
+        self.accepted = []
+        self.declined = []
 
     def validate_agent_key(self):
         if self.error:
@@ -25,10 +41,45 @@ class FakeClient:
             raise self.error
         return self.projects
 
+    def get_policy(self, project_id=None):
+        if project_id is None:
+            return next(iter(self.policies.values()), None)
+        return self.policies.get(project_id)
 
-def fake_client_factory_with(projects=None, error=None):
+    def list_incoming_interests(self, project_id=None):
+        items = self.incoming
+        if project_id:
+            items = [item for item in items if item.get("target_project_id") == project_id]
+        return items
+
+    def list_outgoing_interests(self, source_project_id=None):
+        return []
+
+    def list_conversations(self, project_id=None):
+        return []
+
+    def submit_interest(self, *, project_id, message, contact=None, source_project_id=None):
+        payload = {
+            "project_id": project_id,
+            "message": message,
+            "contact": contact,
+            "source_project_id": source_project_id,
+        }
+        self.submitted.append(payload)
+        return {"id": f"interest-{len(self.submitted)}", **payload}
+
+    def accept_interest(self, interest_id):
+        self.accepted.append(interest_id)
+        return {"id": interest_id, "status": "accepted"}
+
+    def decline_interest(self, interest_id):
+        self.declined.append(interest_id)
+        return {"id": interest_id, "status": "declined"}
+
+
+def fake_client_factory_with(projects=None, policies=None, incoming=None, error=None):
     def factory(agent_key: str, base_url: str, anon_key: str):
-        return FakeClient(projects=projects, error=error)
+        return FakeClient(projects=projects, policies=policies, incoming=incoming, error=error)
 
     return factory
 
@@ -151,3 +202,135 @@ def test_revalidate_key_clears_paused_state(tmp_path):
     assert health["status"] == "ready"
     assert health["paused"] is False
     assert health["consecutive_failures"] == 0
+
+
+def test_install_skill_writes_patrol_prompt_and_bootstrap_plan(tmp_path):
+    result = install_skill(
+        agent_key="cm_sk_live_test",
+        home=tmp_path,
+        config=ClawborateConfig(openclaw_root=str(tmp_path / "openclaw")),
+        client_factory=fake_client_factory_with(projects=[{"id": "project-1"}]),
+    )
+
+    assert (tmp_path / "CLAWBORATE_PATROL.md").exists()
+    assert (tmp_path / "bootstrap-plan.json").exists()
+    assert result["bootstrap_plan"]["cron"]["name"] == "clawborate-patrol"
+
+
+def test_get_patrol_brief_creates_pending_incoming_interest_actions(tmp_path):
+    install_skill(
+        agent_key="cm_sk_live_test",
+        home=tmp_path,
+        client_factory=fake_client_factory_with(
+            projects=[{"id": "project-1", "project_name": "Alpha", "user_id": "owner-1"}],
+            policies={
+                "project-1": {
+                    "market_patrol_interval": "10m",
+                    "message_patrol_interval": "5m",
+                    "interest_behavior": "direct_send",
+                    "reply_behavior": "notify_then_send",
+                    "extra_requirements": "Prefer async projects.",
+                }
+            },
+            incoming=[
+                {
+                    "id": "interest-1",
+                    "status": "open",
+                    "target_project_id": "project-1",
+                    "target": {"project_name": "Alpha"},
+                    "message": "Interested in collaborating",
+                    "from_user_id": "peer-1",
+                }
+            ],
+        ),
+    )
+
+    brief = get_patrol_brief(
+        home=tmp_path,
+        now=datetime(2026, 3, 21, 12, 0, tzinfo=timezone.utc),
+        client_factory=fake_client_factory_with(
+            projects=[{"id": "project-1", "project_name": "Alpha", "user_id": "owner-1"}],
+            policies={
+                "project-1": {
+                    "market_patrol_interval": "10m",
+                    "message_patrol_interval": "5m",
+                    "interest_behavior": "direct_send",
+                    "reply_behavior": "notify_then_send",
+                    "extra_requirements": "Prefer async projects.",
+                }
+            },
+            incoming=[
+                {
+                    "id": "interest-1",
+                    "status": "open",
+                    "target_project_id": "project-1",
+                    "target": {"project_name": "Alpha"},
+                    "message": "Interested in collaborating",
+                    "from_user_id": "peer-1",
+                }
+            ],
+        ),
+    )
+
+    assert brief["project_count"] == 1
+    assert brief["projects"][0]["due"]["market"] is True
+    assert brief["projects"][0]["policy"]["interest_behavior"] == "direct_send"
+    assert brief["incoming_interests"][0]["token"] == "I01"
+
+    state = json.loads((tmp_path / "state.json").read_text(encoding="utf-8"))
+    assert state["pending_actions"]["I01"]["type"] == "incoming_interest"
+
+
+def test_apply_market_decision_and_resolve_pending_action(tmp_path):
+    install_skill(
+        agent_key="cm_sk_live_test",
+        home=tmp_path,
+        client_factory=fake_client_factory_with(
+            projects=[{"id": "project-1", "project_name": "Alpha", "user_id": "owner-1"}],
+            policies={
+                "project-1": {
+                    "market_patrol_interval": "10m",
+                    "message_patrol_interval": "5m",
+                    "interest_behavior": "notify_then_send",
+                    "reply_behavior": "notify_then_send",
+                    "extra_requirements": "",
+                }
+            },
+        ),
+    )
+
+    client_factory = fake_client_factory_with(
+        projects=[{"id": "project-1", "project_name": "Alpha", "user_id": "owner-1"}],
+        policies={
+            "project-1": {
+                "market_patrol_interval": "10m",
+                "message_patrol_interval": "5m",
+                "interest_behavior": "notify_then_send",
+                "reply_behavior": "notify_then_send",
+                "extra_requirements": "",
+            }
+        },
+    )
+
+    pending = apply_market_decision(
+        source_project_id="project-1",
+        target_project_id="target-9",
+        decision="send",
+        confidence=0.92,
+        reason="Strong match",
+        opening_message="We should talk.",
+        home=tmp_path,
+        client_factory=client_factory,
+    )
+
+    assert pending["execution"] == "pending_user"
+    assert pending["pending_action"]["token"] == "M01"
+
+    resolved = resolve_pending_action(
+        action_token="M01",
+        decision="send",
+        home=tmp_path,
+        client_factory=client_factory,
+    )
+    assert resolved["ok"] is True
+    assert resolved["action"]["status"] == "sent"

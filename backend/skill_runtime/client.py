@@ -172,8 +172,11 @@ class GatewayClient:
         data = self.post_agent_api("list_my_projects", {"limit": limit})
         return list(data or [])
 
-    def list_market(self, limit: int = 20) -> list[dict[str, Any]]:
-        data = self.post_agent_api("list_market", {"limit": limit})
+    def list_market(self, limit: int = 20, cursor: int | None = None) -> list[dict[str, Any]]:
+        payload: dict[str, Any] = {"limit": limit}
+        if cursor is not None:
+            payload["cursor"] = cursor
+        data = self.post_agent_api("list_market", payload)
         return list(data or [])
 
     def get_policy(self, project_id: str | None = None) -> dict[str, Any] | None:
@@ -181,12 +184,14 @@ class GatewayClient:
         data = self.post_agent_api("get_policy", payload)
         return data or None
 
-    def list_incoming_interests(self) -> list[dict[str, Any]]:
-        data = self.post_agent_api("list_incoming_interests")
+    def list_incoming_interests(self, *, project_id: str | None = None) -> list[dict[str, Any]]:
+        payload = {"project_id": project_id} if project_id else None
+        data = self.post_agent_api("list_incoming_interests", payload)
         return list(data or [])
 
-    def list_outgoing_interests(self) -> list[dict[str, Any]]:
-        data = self.post_agent_api("list_outgoing_interests")
+    def list_outgoing_interests(self, *, source_project_id: str | None = None) -> list[dict[str, Any]]:
+        payload = {"source_project_id": source_project_id} if source_project_id else None
+        data = self.post_agent_api("list_outgoing_interests", payload)
         return list(data or [])
 
     def accept_interest(self, interest_id: str) -> Any:
@@ -195,11 +200,19 @@ class GatewayClient:
     def decline_interest(self, interest_id: str) -> Any:
         return self.post_agent_api("decline_interest", {"interest_id": interest_id})
 
-    def list_conversations(self) -> list[dict[str, Any]]:
-        data = self.post_agent_api("list_conversations")
+    def list_conversations(self, *, project_id: str | None = None) -> list[dict[str, Any]]:
+        payload = {"project_id": project_id} if project_id else None
+        data = self.post_agent_api("list_conversations", payload)
         return list(data or [])
 
-    def submit_interest(self, *, project_id: str, message: str, contact: str | None = None) -> Any:
+    def submit_interest(
+        self,
+        *,
+        project_id: str,
+        message: str,
+        contact: str | None = None,
+        source_project_id: str | None = None,
+    ) -> Any:
         return self.post_agent_api(
             "submit_interest",
             {
@@ -207,16 +220,25 @@ class GatewayClient:
                 "message": message,
                 "agent_contact": contact,
                 "contact": contact,
+                "source_project_id": source_project_id,
             },
         )
 
-    def start_conversation(self, *, project_id: str, interest_id: str, receiver_user_id: str) -> Any:
+    def start_conversation(
+        self,
+        *,
+        project_id: str,
+        interest_id: str,
+        receiver_user_id: str,
+        source_project_id: str | None = None,
+    ) -> Any:
         return self.post_agent_api(
             "start_conversation",
             {
                 "project_id": project_id,
                 "interest_id": interest_id,
                 "receiver_user_id": receiver_user_id,
+                "source_project_id": source_project_id,
             },
         )
 
@@ -365,10 +387,11 @@ def list_market(
     *,
     agent_key: str,
     limit: int = 20,
+    cursor: int | None = None,
     base_url: str = OFFICIAL_BASE_URL,
     anon_key: str = OFFICIAL_ANON_KEY,
 ) -> list[dict[str, Any]]:
-    return make_client(agent_key, base_url=base_url, anon_key=anon_key).list_market(limit=limit)
+    return make_client(agent_key, base_url=base_url, anon_key=anon_key).list_market(limit=limit, cursor=cursor)
 
 
 def get_policy(
@@ -384,19 +407,23 @@ def get_policy(
 def list_incoming_interests(
     *,
     agent_key: str,
+    project_id: str | None = None,
     base_url: str = OFFICIAL_BASE_URL,
     anon_key: str = OFFICIAL_ANON_KEY,
 ) -> list[dict[str, Any]]:
-    return make_client(agent_key, base_url=base_url, anon_key=anon_key).list_incoming_interests()
+    return make_client(agent_key, base_url=base_url, anon_key=anon_key).list_incoming_interests(project_id=project_id)
 
 
 def list_outgoing_interests(
     *,
     agent_key: str,
+    source_project_id: str | None = None,
     base_url: str = OFFICIAL_BASE_URL,
     anon_key: str = OFFICIAL_ANON_KEY,
 ) -> list[dict[str, Any]]:
-    return make_client(agent_key, base_url=base_url, anon_key=anon_key).list_outgoing_interests()
+    return make_client(agent_key, base_url=base_url, anon_key=anon_key).list_outgoing_interests(
+        source_project_id=source_project_id
+    )
 
 
 def accept_interest(
@@ -422,10 +449,11 @@ def decline_interest(
 def list_conversations(
     *,
     agent_key: str,
+    project_id: str | None = None,
     base_url: str = OFFICIAL_BASE_URL,
     anon_key: str = OFFICIAL_ANON_KEY,
 ) -> list[dict[str, Any]]:
-    return make_client(agent_key, base_url=base_url, anon_key=anon_key).list_conversations()
+    return make_client(agent_key, base_url=base_url, anon_key=anon_key).list_conversations(project_id=project_id)
 
 
 def submit_interest(
@@ -434,6 +462,7 @@ def submit_interest(
     project_id: str,
     message: str,
     contact: str | None = None,
+    source_project_id: str | None = None,
     base_url: str = OFFICIAL_BASE_URL,
     anon_key: str = OFFICIAL_ANON_KEY,
 ) -> Any:
@@ -441,6 +470,7 @@ def submit_interest(
         project_id=project_id,
         message=message,
         contact=contact,
+        source_project_id=source_project_id,
     )
 
 
@@ -450,6 +480,7 @@ def start_conversation(
     project_id: str,
     interest_id: str,
     receiver_user_id: str,
+    source_project_id: str | None = None,
     base_url: str = OFFICIAL_BASE_URL,
     anon_key: str = OFFICIAL_ANON_KEY,
 ) -> Any:
@@ -457,6 +488,7 @@ def start_conversation(
         project_id=project_id,
         interest_id=interest_id,
         receiver_user_id=receiver_user_id,
+        source_project_id=source_project_id,
     )
 
 

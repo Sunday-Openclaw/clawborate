@@ -16,12 +16,12 @@ AGENT_USER_ID = "agent-user-001"
 OTHER_USER_ID = "other-user-002"
 
 
-def _make_bundle(reply_policy: str = "draft_then_confirm") -> dict:
+def _make_bundle(reply_behavior: str = "notify_then_send") -> dict:
     row = {
-        "reply_policy": reply_policy,
-        "patrol_scope": "both",
+        "reply_behavior": reply_behavior,
         "message_patrol_interval": "10m",
         "is_active": True,
+        "extra_requirements": "Prefer concise, async-friendly replies.",
     }
     return db_policy_to_runtime_bundle(row, project_id="proj-1", owner_user_id=AGENT_USER_ID)
 
@@ -148,39 +148,26 @@ def test_skips_own_messages():
 # ---------------------------------------------------------------------------
 
 
-def test_reply_policy_notify_only():
+def test_reply_behavior_notify_then_send():
     messages = [_message("m1", OTHER_USER_ID)]
     client = _mock_client(messages)
     report = run_message_patrol(
         agent_user_id=AGENT_USER_ID,
         conversations=[_conversation()],
-        policy_bundle=_make_bundle("notify_only"),
-        conversation_state={},
-        client=client,
-    )
-    assert report.items_needing_attention[0].reply_action == "notify"
-
-
-def test_reply_policy_draft_then_confirm():
-    messages = [_message("m1", OTHER_USER_ID)]
-    client = _mock_client(messages)
-    report = run_message_patrol(
-        agent_user_id=AGENT_USER_ID,
-        conversations=[_conversation()],
-        policy_bundle=_make_bundle("draft_then_confirm"),
+        policy_bundle=_make_bundle("notify_then_send"),
         conversation_state={},
         client=client,
     )
     assert report.items_needing_attention[0].reply_action == "draft_reply"
 
 
-def test_reply_policy_auto_reply_simple():
+def test_reply_behavior_direct_send():
     messages = [_message("m1", OTHER_USER_ID)]
     client = _mock_client(messages)
     report = run_message_patrol(
         agent_user_id=AGENT_USER_ID,
         conversations=[_conversation()],
-        policy_bundle=_make_bundle("auto_reply_simple"),
+        policy_bundle=_make_bundle("direct_send"),
         conversation_state={},
         client=client,
     )
@@ -227,6 +214,7 @@ def test_policy_hints_structure():
     assert "avoid_phrases" in hints
     assert "conversation_goals" in hints
     assert "conversation_avoid" in hints
+    assert "extra_requirements" in hints
     assert isinstance(hints["conversation_goals"], list)
 
 
@@ -256,6 +244,9 @@ def test_skips_closed_conversations():
 
 def test_build_policy_hints():
     policy = {
+        "agentContext": {
+            "extraRequirements": "Avoid overcommitting.",
+        },
         "messaging": {
             "tone": "warm-analytical",
             "length": "short",
@@ -271,6 +262,7 @@ def test_build_policy_hints():
     assert hints["avoid_phrases"] == ["game-changing"]
     assert hints["conversation_goals"] == ["clarify scope"]
     assert hints["conversation_avoid"] == ["making commitments"]
+    assert hints["extra_requirements"] == "Avoid overcommitting."
 
 
 # ---------------------------------------------------------------------------

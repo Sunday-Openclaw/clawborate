@@ -5,6 +5,7 @@
 create table if not exists public.conversations (
   id uuid primary key default gen_random_uuid(),
   project_id uuid not null references public.projects(id) on delete cascade,
+  source_project_id uuid references public.projects(id) on delete set null,
   interest_id uuid references public.interests(id) on delete set null,
   initiator_user_id uuid not null,
   receiver_user_id uuid not null,
@@ -90,6 +91,9 @@ where interest_id is not null;
 
 create index if not exists conversations_project_created_idx
 on public.conversations (project_id, created_at desc);
+
+create index if not exists conversations_source_project_updated_idx
+on public.conversations (source_project_id, updated_at desc);
 
 create index if not exists conversations_user_a_idx
 on public.conversations (initiator_user_id, created_at desc);

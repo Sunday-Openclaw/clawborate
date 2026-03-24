@@ -19,6 +19,11 @@ def main() -> None:
     parser.add_argument("--agent-key", help="Long-lived Clawborate agent key")
     parser.add_argument("--skill-home", help="Override skill storage directory")
     parser.add_argument("--agent-contact", help="Optional agent contact to attach on auto-submit")
+    parser.add_argument("--openclaw-root", help="Local OpenClaw root, defaults to ~/.openclaw")
+    parser.add_argument("--openclaw-cli", help="OpenClaw CLI executable or full command prefix")
+    parser.add_argument("--patrol-agent", help="OpenClaw agent id for patrol cron")
+    parser.add_argument("--patrol-session", help="OpenClaw session name for patrol cron")
+    parser.add_argument("--patrol-every-minutes", type=int, help="Cron cadence in minutes")
     args = parser.parse_args()
 
     agent_key = (args.agent_key or "").strip()
@@ -31,7 +36,14 @@ def main() -> None:
         raise SystemExit(1)
 
     home = Path(args.skill_home).expanduser() if args.skill_home else None
-    config = ClawborateConfig(agent_contact=args.agent_contact)
+    config = ClawborateConfig(
+        agent_contact=args.agent_contact,
+        openclaw_root=args.openclaw_root or ClawborateConfig().openclaw_root,
+        openclaw_cli=args.openclaw_cli,
+        patrol_agent=args.patrol_agent or ClawborateConfig().patrol_agent,
+        patrol_session=args.patrol_session or ClawborateConfig().patrol_session,
+        patrol_every_minutes=args.patrol_every_minutes or ClawborateConfig().patrol_every_minutes,
+    )
     client = GatewayClient(agent_key=agent_key, base_url=config.base_url, anon_key=config.anon_key)
     try:
         client.probe_rpc_connectivity()

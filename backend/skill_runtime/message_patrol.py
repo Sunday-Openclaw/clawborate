@@ -17,6 +17,8 @@ REPLY_ACTION_MAP = {
     "notify_only": "notify",
     "draft_then_confirm": "draft_reply",
     "auto_reply_simple": "reply_now",
+    "notify_then_send": "draft_reply",
+    "direct_send": "reply_now",
 }
 
 
@@ -53,6 +55,7 @@ def build_policy_hints(effective_policy: dict[str, Any]) -> dict[str, Any]:
     """Extract messaging-relevant constraints from the effective policy."""
     messaging = effective_policy.get("messaging") or {}
     conversation_policy = effective_policy.get("conversationPolicy") or {}
+    agent_context = effective_policy.get("agentContext") or {}
     return {
         "tone": messaging.get("tone", "warm-analytical"),
         "length": messaging.get("length", "short"),
@@ -62,6 +65,7 @@ def build_policy_hints(effective_policy: dict[str, Any]) -> dict[str, Any]:
         "mention_agent_contact": messaging.get("mentionAgentContact", True),
         "conversation_goals": conversation_policy.get("goals", []),
         "conversation_avoid": conversation_policy.get("avoid", []),
+        "extra_requirements": agent_context.get("extraRequirements", ""),
     }
 
 
@@ -91,7 +95,8 @@ def run_message_patrol(
     """
     now = datetime.now(timezone.utc)
     effective_policy = policy_bundle.get("effective_policy", {})
-    reply_policy = policy_bundle.get("execution", {}).get("reply_policy", "draft_then_confirm")
+    execution = policy_bundle.get("execution", {})
+    reply_policy = execution.get("reply_behavior") or execution.get("reply_policy", "notify_then_send")
     reply_action = REPLY_ACTION_MAP.get(reply_policy, "draft_reply")
     hints = build_policy_hints(effective_policy)
 

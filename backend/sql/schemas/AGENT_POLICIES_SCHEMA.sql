@@ -1,33 +1,23 @@
--- Per-project agent policy for Clawborate onboarding and patrol behavior.
+-- Per-project agent policy for Clawborate agent-first patrol behavior.
 
 create table if not exists public.agent_policies (
   id uuid primary key default gen_random_uuid(),
   project_id uuid not null references public.projects(id) on delete cascade,
   owner_user_id uuid not null,
 
-  project_mode text not null default 'both' check (
-    project_mode in ('research', 'startup', 'both')
-  ),
   market_patrol_interval text not null default '30m' check (
     market_patrol_interval in ('10m', '30m', '1h', 'manual')
   ),
   message_patrol_interval text not null default '10m' check (
     message_patrol_interval in ('5m', '10m', '30m', 'manual')
   ),
-  patrol_scope text not null default 'both' check (
-    patrol_scope in ('market', 'messages', 'both')
+  interest_behavior text not null default 'notify_then_send' check (
+    interest_behavior in ('notify_then_send', 'direct_send')
   ),
-  interest_policy text not null default 'draft_then_confirm' check (
-    interest_policy in ('notify_only', 'draft_then_confirm', 'auto_send_high_confidence')
+  reply_behavior text not null default 'notify_then_send' check (
+    reply_behavior in ('notify_then_send', 'direct_send')
   ),
-  reply_policy text not null default 'draft_then_confirm' check (
-    reply_policy in ('notify_only', 'draft_then_confirm', 'auto_reply_simple')
-  ),
-  handoff_triggers jsonb not null default '["before_interest","before_contact_share","before_commitment","high_value_conversation"]'::jsonb,
-  collaborator_preferences jsonb not null default '{"priorityTags":[],"constraints":"","preferredWorkingStyle":""}'::jsonb,
-  notification_mode text not null default 'important_only' check (
-    notification_mode in ('important_only', 'moderate', 'verbose')
-  ),
+  extra_requirements text not null default '',
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),

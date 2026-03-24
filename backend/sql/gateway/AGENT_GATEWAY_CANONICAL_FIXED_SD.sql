@@ -23,7 +23,9 @@ declare
     v_scopes jsonb;
     v_result jsonb;
     v_limit int;
+    v_cursor int;
     v_project_id uuid;
+    v_source_project_id uuid;
     v_target_project_owner uuid;
     v_conversation_id uuid;
     v_interest_id uuid;
@@ -52,8 +54,14 @@ begin
         case when (p_payload->>'limit') ~ '^\d+$'
              then (p_payload->>'limit')::int
              else null end, 20), 100));
+    v_cursor := greatest(0, coalesce(
+        case when (p_payload->>'cursor') ~ '^\d+$'
+             then (p_payload->>'cursor')::int
+             else null end, 0));
     v_project_id := case when nullif(p_payload->>'project_id', '') ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
                          then (p_payload->>'project_id')::uuid else null end;
+    v_source_project_id := case when nullif(p_payload->>'source_project_id', '') ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+                                then (p_payload->>'source_project_id')::uuid else null end;
     v_conversation_id := case when nullif(p_payload->>'conversation_id', '') ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
                               then (p_payload->>'conversation_id')::uuid else null end;
     v_interest_id := case when nullif(p_payload->>'interest_id', '') ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
@@ -91,6 +99,7 @@ begin
                 where public_summary is not null
                   and user_id <> v_owner_user_id
                 order by created_at desc
+                offset v_cursor
                 limit v_limit
             ) t;
 
@@ -219,6 +228,7 @@ begin
                 select
                     i.id,
                     i.from_user_id,
+                    i.source_project_id,
                     i.target_project_id,
                     i.message,
                     i.agent_contact,
@@ -232,6 +242,7 @@ begin
                 from public.interests i
                 join public.projects p on i.target_project_id = p.id
                 where p.user_id = v_owner_user_id
+                  and (v_project_id is null or i.target_project_id = v_project_id)
                 order by i.created_at desc
             ) t;
 
@@ -245,6 +256,7 @@ begin
                 select
                     i.id,
                     i.from_user_id,
+                    i.source_project_id,
                     i.target_project_id,
                     i.message,
                     i.agent_contact,
@@ -258,6 +270,7 @@ begin
                 from public.interests i
                 join public.projects p on i.target_project_id = p.id
                 where i.from_user_id = v_owner_user_id
+                  and (v_source_project_id is null or i.source_project_id = v_source_project_id)
                 order by i.created_at desc
             ) t;
 
@@ -283,12 +296,22 @@ begin
                 return jsonb_build_object('error', 'cannot_interest_own_project', 'message', 'Cannot submit interest to your own project');
             end if;
 
+            if v_source_project_id is not null and not exists (
+                select 1
+                from public.projects p
+                where p.id = v_source_project_id
+                  and p.user_id = v_owner_user_id
+            ) then
+                return jsonb_build_object('error', 'forbidden_source_project', 'message', 'source_project_id is not owned by this agent');
+            end if;
+
             if exists (
                 select 1
                 from public.interests i
                 where i.from_user_id = v_owner_user_id
                   and i.target_project_id = v_project_id
                   and i.status in ('open', 'accepted')
+                  and (v_source_project_id is null or i.source_project_id = v_source_project_id)
             ) then
                 return jsonb_build_object('error', 'duplicate_interest', 'message', 'An open or accepted interest already exists for this project');
             end if;
@@ -301,12 +324,14 @@ begin
 
             insert into public.interests (
                 from_user_id,
+                source_project_id,
                 target_project_id,
                 message,
                 agent_contact
             )
             values (
                 v_owner_user_id,
+                v_source_project_id,
                 v_project_id,
                 p_payload->>'message',
                 coalesce(p_payload->>'agent_contact', p_payload->>'contact')
@@ -389,8 +414,9 @@ begin
                 select c.*, p.project_name
                 from public.conversations c
                 left join public.projects p on c.project_id = p.id
-                where c.initiator_user_id = v_owner_user_id
-                   or c.receiver_user_id = v_owner_user_id
+                where (c.initiator_user_id = v_owner_user_id
+                   or c.receiver_user_id = v_owner_user_id)
+                  and (v_project_id is null or c.project_id = v_project_id or c.source_project_id = v_project_id)
                 order by c.updated_at desc
             ) t;
 
@@ -422,6 +448,15 @@ begin
                 return jsonb_build_object('error', 'forbidden_interest', 'message', 'Interest is not accessible to this agent');
             end if;
 
+            if v_source_project_id is not null and not exists (
+                select 1
+                from public.projects p
+                where p.id = v_source_project_id
+                  and p.user_id = v_owner_user_id
+            ) then
+                return jsonb_build_object('error', 'forbidden_source_project', 'message', 'source_project_id is not owned by this agent');
+            end if;
+
             select row_to_json(c.*)::jsonb into v_result
             from public.conversations c
             where c.interest_id = v_interest_id
@@ -430,6 +465,7 @@ begin
             if v_result is null then
                 insert into public.conversations (
                     project_id,
+                    source_project_id,
                     interest_id,
                     initiator_user_id,
                     receiver_user_id,
@@ -437,6 +473,7 @@ begin
                 )
                 values (
                     v_project_id,
+                    coalesce(v_source_project_id, v_interest_row.source_project_id),
                     v_interest_id,
                     v_owner_user_id,
                     v_receiver_user_id,

@@ -1,5 +1,14 @@
 """
 Helpers for turning dashboard-stored agent policies into executable runtime config.
+
+The new runtime is intentionally agent-first:
+
+- market/conversation decisions are made by the OpenClaw agent
+- the skill only handles scheduling, state, execution, and safety checks
+- policy is reduced to patrol cadence + send behavior + free-form requirements
+
+This module still accepts legacy dashboard rows so older data can be migrated
+without breaking the current runtime.
 """
 
 from __future__ import annotations
@@ -7,35 +16,14 @@ from __future__ import annotations
 import copy
 import re
 from datetime import datetime, timedelta, timezone
-from typing import Any, cast
-
-from .autopilot_core import DEFAULT_POLICY, deep_merge
-
-DEFAULT_HANDOFF_TRIGGERS = [
-    "before_interest",
-    "before_contact_share",
-    "before_commitment",
-    "high_value_conversation",
-]
+from typing import Any
 
 DEFAULT_DB_POLICY = {
-    "project_mode": "both",
     "market_patrol_interval": "30m",
     "message_patrol_interval": "10m",
-    "patrol_scope": "both",
-    "interest_policy": "draft_then_confirm",
-    "reply_policy": "draft_then_confirm",
-    "handoff_triggers": DEFAULT_HANDOFF_TRIGGERS,
-    "collaborator_preferences": {
-        "priorityTags": [],
-        "constraints": "",
-        "preferredWorkingStyle": "",
-        "automation": {
-            "autoAcceptIncomingInterest": False,
-            "requireHumanApprovalForAcceptingInterest": True,
-        },
-    },
-    "notification_mode": "important_only",
+    "interest_behavior": "notify_then_send",
+    "reply_behavior": "notify_then_send",
+    "extra_requirements": "",
     "is_active": True,
 }
 
@@ -51,11 +39,37 @@ MESSAGE_INTERVAL_MINUTES = {
     "30m": 30,
 }
 
-DISALLOWED_PREFIXES = ("no ", "not ", "avoid ", "without ", "must not ")
+INTEREST_POLICY_TO_BEHAVIOR = {
+    "notify_only": "notify_then_send",
+    "draft_then_confirm": "notify_then_send",
+    "auto_send_high_confidence": "direct_send",
+}
 
+REPLY_POLICY_TO_BEHAVIOR = {
+    "notify_only": "notify_then_send",
+    "draft_then_confirm": "notify_then_send",
+    "auto_reply_simple": "direct_send",
+}
 
-def _copy_default_db_policy() -> dict[str, Any]:
-    return copy.deepcopy(DEFAULT_DB_POLICY)
+BEHAVIOR_TO_LEGACY_INTEREST_POLICY = {
+    "notify_then_send": "draft_then_confirm",
+    "direct_send": "auto_send_high_confidence",
+}
+
+BEHAVIOR_TO_LEGACY_REPLY_POLICY = {
+    "notify_then_send": "draft_then_confirm",
+    "direct_send": "auto_reply_simple",
+}
+
+EXTRA_REQUIREMENT_PREFIXES = (
+    "avoid:",
+    "forbid:",
+    "must avoid:",
+    "do not:",
+    "don't:",
+    "禁止：",
+    "禁止:",
+)
 
 
 def _normalize_text_list(value: Any) -> list[str]:
@@ -63,8 +77,8 @@ def _normalize_text_list(value: Any) -> list[str]:
         return []
     items = value if isinstance(value, list) else re.split(r"[,;\n]+", str(value))
 
-    normalized = []
-    seen = set()
+    normalized: list[str] = []
+    seen: set[str] = set()
     for item in items:
         text = " ".join(str(item).strip().split())
         if not text:
@@ -77,33 +91,128 @@ def _normalize_text_list(value: Any) -> list[str]:
     return normalized
 
 
+def _merge_extra_requirements(
+    explicit_value: Any,
+    collaborator_preferences: dict[str, Any] | None,
+    legacy_row: dict[str, Any] | None,
+) -> str:
+    if explicit_value is not None and str(explicit_value).strip():
+        return str(explicit_value).strip()
+
+    prefs = collaborator_preferences or {}
+    lines: list[str] = []
+
+    priority_tags = _normalize_text_list(prefs.get("priorityTags"))
+    if priority_tags:
+        lines.append(f"Prioritize projects or conversations related to: {', '.join(priority_tags)}.")
+
+    preferred_style = str(prefs.get("preferredWorkingStyle") or "").strip()
+    if preferred_style:
+        lines.append(f"Preferred working style: {preferred_style}.")
+
+    constraints = str(prefs.get("constraints") or "").strip()
+    if constraints:
+        lines.append(f"Legacy constraints: {constraints}")
+
+    avoid_phrases = _normalize_text_list(prefs.get("avoidPhrases"))
+    if avoid_phrases:
+        lines.append("Avoid these phrases in outgoing messages: " + "; ".join(avoid_phrases))
+
+    conversation_goals = _normalize_text_list(prefs.get("conversationGoals"))
+    if conversation_goals:
+        lines.append("Conversation goals: " + "; ".join(conversation_goals))
+
+    conversation_avoid = _normalize_text_list(prefs.get("conversationAvoid"))
+    if conversation_avoid:
+        lines.append("Conversation topics to avoid: " + "; ".join(conversation_avoid))
+
+    if legacy_row:
+        project_mode = legacy_row.get("project_mode")
+        if project_mode:
+            lines.append(f"Legacy project mode preference: {project_mode}.")
+
+    return "\n".join(lines).strip()
+
+
+def _extract_extra_requirement_blocklist(extra_requirements: str) -> list[str]:
+    blocked: list[str] = []
+    for raw_line in extra_requirements.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        lowered = line.lower()
+        matched_prefix = next((prefix for prefix in EXTRA_REQUIREMENT_PREFIXES if lowered.startswith(prefix)), None)
+        if matched_prefix:
+            phrase = line[len(matched_prefix) :].strip(" -:：")
+            if phrase:
+                blocked.append(phrase)
+            continue
+        if "avoid these phrases" in lowered:
+            continue
+        inline_match = re.search(r"\bavoid\s+([a-zA-Z0-9 _-]+)", lowered)
+        if inline_match:
+            phrase = inline_match.group(1).strip(" -:：")
+            if phrase:
+                blocked.append(phrase)
+    return _normalize_text_list(blocked)
+
+
 def coerce_db_policy_row(
     policy_row: dict[str, Any] | None,
     *,
     project_id: str | None = None,
     owner_user_id: str | None = None,
 ) -> dict[str, Any]:
-    row = _copy_default_db_policy()
-    if policy_row:
-        row.update({k: v for k, v in policy_row.items() if k != "collaborator_preferences"})
+    source = copy.deepcopy(policy_row or {})
+    prefs = source.get("collaborator_preferences")
+    prefs_dict = copy.deepcopy(prefs) if isinstance(prefs, dict) else {}
 
-    prefs = cast(dict[str, Any], copy.deepcopy(DEFAULT_DB_POLICY["collaborator_preferences"]))
-    if policy_row and isinstance(policy_row.get("collaborator_preferences"), dict):
-        incoming_prefs = cast(dict[str, Any], policy_row["collaborator_preferences"])
-        prefs.update(incoming_prefs)
-        if isinstance(incoming_prefs.get("automation"), dict):
-            automation_prefs = cast(dict[str, Any], prefs["automation"])
-            automation_prefs.update(cast(dict[str, Any], incoming_prefs["automation"]))
-            prefs["automation"] = automation_prefs
+    interest_behavior = str(
+        source.get("interest_behavior")
+        or INTEREST_POLICY_TO_BEHAVIOR.get(str(source.get("interest_policy") or ""))
+        or DEFAULT_DB_POLICY["interest_behavior"]
+    )
+    if interest_behavior not in {"notify_then_send", "direct_send"}:
+        interest_behavior = DEFAULT_DB_POLICY["interest_behavior"]
 
-    row["collaborator_preferences"] = prefs
-    raw_handoff_triggers = row.get("handoff_triggers")
-    if raw_handoff_triggers is None:
-        raw_handoff_triggers = DEFAULT_HANDOFF_TRIGGERS
-    row["handoff_triggers"] = _normalize_text_list(raw_handoff_triggers)
-    row["project_id"] = row.get("project_id") or project_id
-    row["owner_user_id"] = row.get("owner_user_id") or owner_user_id
-    row["is_active"] = bool(row.get("is_active", True))
+    reply_behavior = str(
+        source.get("reply_behavior")
+        or REPLY_POLICY_TO_BEHAVIOR.get(str(source.get("reply_policy") or ""))
+        or DEFAULT_DB_POLICY["reply_behavior"]
+    )
+    if reply_behavior not in {"notify_then_send", "direct_send"}:
+        reply_behavior = DEFAULT_DB_POLICY["reply_behavior"]
+
+    row: dict[str, Any] = {
+        "project_id": source.get("project_id") or project_id,
+        "owner_user_id": source.get("owner_user_id") or owner_user_id,
+        "market_patrol_interval": str(source.get("market_patrol_interval") or DEFAULT_DB_POLICY["market_patrol_interval"]),
+        "message_patrol_interval": str(
+            source.get("message_patrol_interval") or DEFAULT_DB_POLICY["message_patrol_interval"]
+        ),
+        "interest_behavior": interest_behavior,
+        "reply_behavior": reply_behavior,
+        "extra_requirements": _merge_extra_requirements(
+            source.get("extra_requirements"),
+            prefs_dict,
+            source,
+        ),
+        "is_active": bool(source.get("is_active", DEFAULT_DB_POLICY["is_active"])),
+    }
+
+    if row["market_patrol_interval"] not in {*MARKET_INTERVAL_MINUTES.keys(), "manual"}:
+        row["market_patrol_interval"] = DEFAULT_DB_POLICY["market_patrol_interval"]
+    if row["message_patrol_interval"] not in {*MESSAGE_INTERVAL_MINUTES.keys(), "manual"}:
+        row["message_patrol_interval"] = DEFAULT_DB_POLICY["message_patrol_interval"]
+
+    # Preserve legacy fields for compatibility with existing code paths.
+    row["patrol_scope"] = source.get("patrol_scope") or "both"
+    row["project_mode"] = source.get("project_mode")
+    row["notification_mode"] = source.get("notification_mode") or "verbose"
+    row["handoff_triggers"] = _normalize_text_list(source.get("handoff_triggers") or [])
+    row["collaborator_preferences"] = prefs_dict
+    row["interest_policy"] = BEHAVIOR_TO_LEGACY_INTEREST_POLICY[row["interest_behavior"]]
+    row["reply_policy"] = BEHAVIOR_TO_LEGACY_REPLY_POLICY[row["reply_behavior"]]
     return row
 
 
@@ -111,6 +220,12 @@ def market_interval_minutes(value: str | None) -> int | None:
     if not value:
         return None
     return MARKET_INTERVAL_MINUTES.get(value)
+
+
+def message_interval_minutes(value: str | None) -> int | None:
+    if not value:
+        return None
+    return MESSAGE_INTERVAL_MINUTES.get(value)
 
 
 def parse_timestamp(value: str | None) -> datetime | None:
@@ -138,29 +253,20 @@ def should_run_market_patrol(
     if not row.get("is_active", True):
         return False, "inactive"
 
-    patrol_scope = row.get("patrol_scope")
-    if patrol_scope == "messages":
+    if row.get("patrol_scope") == "messages":
         return False, "messages_only_scope"
-    if patrol_scope not in {"market", "both"}:
-        return False, "unsupported_scope"
 
-    interval_minutes = market_interval_minutes(row.get("market_patrol_interval"))
-    if interval_minutes is None:
+    interval = market_interval_minutes(row.get("market_patrol_interval"))
+    if interval is None:
         return False, "manual_interval"
 
     last_run_dt = parse_timestamp(last_market_run_at)
     if last_run_dt is None:
         return True, "first_run"
 
-    if now >= last_run_dt + timedelta(minutes=interval_minutes):
+    if now >= last_run_dt + timedelta(minutes=interval):
         return True, "interval_elapsed"
     return False, "not_due"
-
-
-def message_interval_minutes(value: str | None) -> int | None:
-    if not value:
-        return None
-    return MESSAGE_INTERVAL_MINUTES.get(value)
 
 
 def should_run_message_patrol(
@@ -175,11 +281,8 @@ def should_run_message_patrol(
     if not row.get("is_active", True):
         return False, "inactive"
 
-    patrol_scope = row.get("patrol_scope")
-    if patrol_scope == "market":
+    if row.get("patrol_scope") == "market":
         return False, "market_only_scope"
-    if patrol_scope not in {"messages", "both"}:
-        return False, "unsupported_scope"
 
     interval = message_interval_minutes(row.get("message_patrol_interval"))
     if interval is None:
@@ -201,80 +304,72 @@ def db_policy_to_runtime_bundle(
     owner_user_id: str | None = None,
 ) -> dict[str, Any]:
     row = coerce_db_policy_row(policy_row, project_id=project_id, owner_user_id=owner_user_id)
-    prefs = row["collaborator_preferences"]
-    priority_tags = _normalize_text_list(prefs.get("priorityTags"))
-    preferred_styles = _normalize_text_list(prefs.get("preferredWorkingStyle"))
-    constraint_phrases = _normalize_text_list(prefs.get("constraints"))
-    disallowed_patterns = [phrase for phrase in constraint_phrases if phrase.lower().startswith(DISALLOWED_PREFIXES)]
-    must_have_phrases = [phrase for phrase in constraint_phrases if phrase not in disallowed_patterns]
-
-    # New fields from collaborator_preferences
-    avoid_phrases = _normalize_text_list(prefs.get("avoidPhrases"))
+    prefs = row.get("collaborator_preferences") or {}
+    legacy_avoid_phrases = _normalize_text_list(prefs.get("avoidPhrases"))
+    extra_requirements = str(row.get("extra_requirements") or "")
+    extra_requirement_blocklist = _extract_extra_requirement_blocklist(extra_requirements)
     conversation_goals = _normalize_text_list(prefs.get("conversationGoals"))
     conversation_avoid = _normalize_text_list(prefs.get("conversationAvoid"))
 
-    triggers = set(row.get("handoff_triggers") or [])
-    before_interest = "before_interest" in triggers
-    high_value_conversation = "high_value_conversation" in triggers
-    automation_prefs = prefs.get("automation") or {}
-    interval_minutes = market_interval_minutes(row.get("market_patrol_interval"))
-    default_scan_strategy = cast(dict[str, Any], DEFAULT_POLICY["scanStrategy"])
-    default_scan_interval_minutes = int(default_scan_strategy.get("scanIntervalMinutes", 180))
-
-    policy_override: dict[str, Any] = {
-        "scanStrategy": {
-            "enabled": bool(row.get("is_active", True)) and interval_minutes is not None,
-            "scanIntervalMinutes": interval_minutes or default_scan_interval_minutes,
+    effective_policy: dict[str, Any] = {
+        "agentContext": {
+            "extraRequirements": extra_requirements,
+            "requireAgentJudgment": True,
         },
-        "preferences": {
-            "prioritizeTags": priority_tags,
-            "preferredCollaborationStyle": preferred_styles,
+        "messaging": {
+            "avoidPhrases": _normalize_text_list(legacy_avoid_phrases + extra_requirement_blocklist),
         },
-        "hardConstraints": {
-            "disallowedPatterns": disallowed_patterns,
-            "mustHaveAtLeastOne": must_have_phrases,
+        "conversationPolicy": {
+            "goals": conversation_goals,
+            "avoid": conversation_avoid,
         },
-        "automation": {
-            "autoSubmitInterest": row.get("interest_policy") == "auto_send_high_confidence" and not before_interest,
-            "requireHumanApprovalForInterest": (
-                row.get("interest_policy") != "auto_send_high_confidence" or before_interest
-            ),
-            "autoStartConversation": not high_value_conversation,
-            "requireHumanApprovalForConversation": high_value_conversation,
-            "autoAcceptIncomingInterest": bool(automation_prefs.get("autoAcceptIncomingInterest", False)),
-            "requireHumanApprovalForAcceptingInterest": automation_prefs.get(
-                "requireHumanApprovalForAcceptingInterest", True
-            ),
+        "behavior": {
+            "interest_behavior": row["interest_behavior"],
+            "reply_behavior": row["reply_behavior"],
+        },
+        "patrol": {
+            "market_patrol_interval": row["market_patrol_interval"],
+            "message_patrol_interval": row["message_patrol_interval"],
         },
     }
-    if avoid_phrases:
-        policy_override["messaging"] = {"avoidPhrases": avoid_phrases}
-    if conversation_goals:
-        policy_override.setdefault("conversationPolicy", {})["goals"] = conversation_goals
-    if conversation_avoid:
-        policy_override.setdefault("conversationPolicy", {})["avoid"] = conversation_avoid
-
-    effective_policy = deep_merge(copy.deepcopy(DEFAULT_POLICY), policy_override)
 
     return {
         "row": row,
         "effective_policy": effective_policy,
         "execution": {
-            "interest_policy": row.get("interest_policy"),
-            "reply_policy": row.get("reply_policy"),
-            "market_patrol_interval": row.get("market_patrol_interval"),
-            "message_patrol_interval": row.get("message_patrol_interval"),
-            "patrol_scope": row.get("patrol_scope"),
-            "notification_mode": row.get("notification_mode"),
-            "before_interest": before_interest,
-            "high_value_conversation": high_value_conversation,
-            "before_contact_share": "before_contact_share" in triggers,
-            "before_commitment": "before_commitment" in triggers,
+            "interest_behavior": row["interest_behavior"],
+            "reply_behavior": row["reply_behavior"],
+            "market_patrol_interval": row["market_patrol_interval"],
+            "message_patrol_interval": row["message_patrol_interval"],
+            "extra_requirements": extra_requirements,
+            # compatibility fields for older callers/tests
+            "interest_policy": row["interest_policy"],
+            "reply_policy": row["reply_policy"],
+            "patrol_scope": row.get("patrol_scope", "both"),
+            "notification_mode": row.get("notification_mode", "verbose"),
+            "before_interest": False,
+            "high_value_conversation": False,
+            "before_contact_share": True,
+            "before_commitment": True,
             "message_patrol_implemented": True,
-            "auto_send_confidence_threshold": 0.82,
+            "auto_send_confidence_threshold": None,
             "metadata_only_fields": {
                 "project_mode": row.get("project_mode"),
-                "human_handoff_only": "human_handoff_only" in triggers,
+                "human_handoff_only": False,
             },
         },
     }
+
+
+__all__ = [
+    "DEFAULT_DB_POLICY",
+    "INTEREST_POLICY_TO_BEHAVIOR",
+    "REPLY_POLICY_TO_BEHAVIOR",
+    "coerce_db_policy_row",
+    "db_policy_to_runtime_bundle",
+    "market_interval_minutes",
+    "message_interval_minutes",
+    "parse_timestamp",
+    "should_run_market_patrol",
+    "should_run_message_patrol",
+]
