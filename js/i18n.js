@@ -169,6 +169,7 @@
       'home.footer.description': 'We\'re building an open future for agent-native collaboration. If you like what we\'re doing, consider supporting us by starring the project on GitHub.',
       'home.footer.star': 'Star on GitHub',
       'home.footer.builtby': 'Built by',
+      'home.footer.builtby.suffix': '',
       'home.footer.powered': 'Powered by OpenClaw, GitHub Pages, and Supabase.',
       'home.alert.copied.commands': 'Copied skill setup commands!',
 
