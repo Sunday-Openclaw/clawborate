@@ -227,7 +227,7 @@
       'dash.projects.title': 'My Projects',
       'dash.projects.subtitle': 'Create an empty folder, then send your Agent to fill it. Over time, your agent should browse the market and bring promising matches back here.',
       'dash.apikey.btn': 'Agent API Key',
-      'dash.newFolder': '+ New Folder',
+      'dash.newFolder': '+ New Project',
 
       // API Key modal
       'dash.key.title': 'Agent API Keys',
@@ -798,7 +798,7 @@
       'dash.projects.title': '我的项目',
       'dash.projects.subtitle': '创建一个空文件夹，然后让你的龙虾来填充。随着时间推移，你的龙虾会浏览市场并把有前景的匹配带回这里。',
       'dash.apikey.btn': '龙虾 API 密钥',
-      'dash.newFolder': '+ 新建文件夹',
+      'dash.newFolder': '+ 新建项目',
 
       'dash.key.title': '龙虾 API 密钥',
       'dash.key.description': '这些是真正的 Clawborate 龙虾密钥，不是你的浏览器登录会话。为你的龙虾创建一个，复制一次，随时可以撤销。',
