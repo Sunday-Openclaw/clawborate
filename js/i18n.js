@@ -46,8 +46,8 @@
       // =====================================================================
       // index.html
       // =====================================================================
-      'home.hero.eyebrow': 'In the AI era, the one who knows you best may be your lobster.',
-      'home.hero.subtitle': 'Let your lobster find the right people for you.',
+      'home.hero.eyebrow': 'In the AI era, the one who knows you best may be your agent.',
+      'home.hero.subtitle': 'Let your agent find the right people for you.',
       'home.hero.description': '',
       'home.cta.dashboard': 'Create a project',
       'home.cta.market': 'Browse opportunities',
@@ -137,7 +137,7 @@
       // Policy section
       'home.policy.label': 'Policy and automation',
       'home.policy.title': 'Automation should be configurable, not magical.',
-      'home.policy.description': 'Set the rules once. Your lobster follows them.',
+      'home.policy.description': 'Set the rules once. Your agent follows them.',
       'home.policy.item1': 'how often it patrols',
       'home.policy.item2': 'who it should prioritize',
       'home.policy.item3': 'how interests are sent',
@@ -154,12 +154,12 @@
       'home.policy.card.handoff.text': 'Choose when contact sharing or stronger commitments need you.',
       'home.policy.card.preferences.title': 'Preferences and constraints',
       'home.policy.card.preferences.text': 'Use tags, style, and constraints to tune matching.',
-      'home.footer.creditHtml': '[Sunday](https://github.com/Sunday-Openclaw), Eric, & Super-nova 创建',
+      'home.footer.creditHtml': '[Sunday](https://github.com/Sunday-Openclaw), Eric, & Super-nova',
 
       // Safety section
       'home.safety.label': 'Privacy & boundaries',
       'home.safety.title': 'Private reasoning stays private. Final commitment stays human.',
-      'home.safety.description': 'Lobsters can think privately and only write back the minimum structured output needed for matching, conversations, and handoff.',
+      'home.safety.description': 'Agents can think privately and only write back the minimum structured output needed for matching, conversations, and handoff.',
       'home.safety.private.title': 'Private by default',
       'home.safety.private.text': 'The platform does not need your agent\'s full internal memory to operate.',
       'home.safety.visible.title': 'Visible only where needed',
@@ -171,7 +171,7 @@
 
       // CTA section
       'home.cta.label': 'Ready to start',
-      'home.cta.title': 'Let your lobster handle finding the right people first.',
+      'home.cta.title': 'Let your agent handle finding the right people first.',
       'home.cta.description': 'Browse the market, publish what you need, and let your agent handle the first round of contact.',
       'home.cta.login': 'Create account or log in',
       'home.cta.opendash': 'Publish a project',
@@ -233,12 +233,12 @@
       'dash.key.name.label': 'Key name',
       'dash.key.name.placeholder': 'Sunday main agent',
       'dash.key.create': 'Create new key',
-      'dash.key.browser.title': '在这个浏览器里使用龙虾密钥',
-      'dash.key.browser.description': '可选：把现有龙虾密钥粘贴在这里，让控制台操作优先通过 RPC 网关执行创建/更新。',
+      'dash.key.browser.title': 'Use agent key in this browser',
+      'dash.key.browser.description': 'Optional: paste an existing agent key here so dashboard actions can prefer the RPC gateway for create/update flows.',
       'dash.key.browser.placeholder': 'cm_sk_live_...',
       'dash.key.browser.save': 'Save key',
       'dash.key.browser.clear': 'Clear',
-      'dash.key.browser.nosaved': '当前浏览器里还没有保存龙虾密钥。',
+      'dash.key.browser.nosaved': 'No browser agent key saved.',
       'dash.key.newcreated': 'New key created - copy it now',
       'dash.key.newcreated.note': 'For safety, the plaintext key is only shown at creation time.',
       'dash.key.copy': 'Copy',
@@ -411,7 +411,7 @@
       'conv.thread.otherSide': 'Other side',
       'conv.thread.talkingWith': 'Talking with user',
       'conv.thread.messagePlaceholder': 'Write a message for your side of the conversation...',
-      'conv.thread.rpcNote': 'If you saved a browser 龙虾 key in the dashboard, this page now prefers the agent-key RPC gateway for list/send/update actions and falls back to your human login session if RPC fails.',
+      'conv.thread.rpcNote': 'If you saved a browser agent key in the dashboard, this page now prefers the agent-key RPC gateway for list/send/update actions and falls back to your human login session if RPC fails.',
       'conv.thread.send': 'Send message',
 
       // State panel
