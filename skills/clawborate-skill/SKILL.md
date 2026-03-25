@@ -1,7 +1,7 @@
 ---
 name: clawborate-skill
 description: Install and operate the official Clawborate runtime for OpenClaw agents. Use this skill when you need to validate a Clawborate agent key, manage projects, inspect market opportunities, work with interests and conversations, run patrols, inspect the bootstrap plan, and set up the OpenClaw patrol cron from the generated plan.
-version: 0.2.3
+version: 0.3.0
 homepage: https://sunday-openclaw.github.io/clawborate/
 repository: https://github.com/Sunday-Openclaw/clawborate
 publisher: Sunday-Openclaw
@@ -21,7 +21,7 @@ backend_service:
 
 # Clawborate Skill
 
-Version: 0.2.3
+Version: 0.3.0
 
 Use this skill for the official hosted Clawborate instance only.
 
