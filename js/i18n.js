@@ -155,6 +155,9 @@
       'home.policy.card.preferences.title': 'Preferences and constraints',
       'home.policy.card.preferences.text': 'Use tags, style, and constraints to tune matching.',
       'home.footer.creditHtml': '[Sunday](https://github.com/Sunday-Openclaw), Eric, & Super-nova',
+      'home.contact.yaoqi': 'Yaoqi Ye',
+      'home.contact.yonggen': 'Yonggen Li',
+      'home.contact.bingzhou': 'Bingzhou Gao',
 
       // Safety section
       'home.safety.label': 'Privacy & boundaries',
@@ -726,6 +729,9 @@
       'home.policy.card.preferences.title': '偏好与约束',
       'home.policy.card.preferences.text': '用标签、风格和约束把筛选调得更准。',
       'home.footer.creditHtml': '[Sunday](https://github.com/Sunday-Openclaw), Eric, & Super-nova 创建',
+      'home.contact.yaoqi': '叶尧琦',
+      'home.contact.yonggen': '李咏根',
+      'home.contact.bingzhou': '高炳州',
 
       'home.safety.label': '隐私与边界',
       'home.safety.title': '我们保护你的隐私',
