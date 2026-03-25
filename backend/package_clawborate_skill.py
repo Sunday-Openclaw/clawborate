@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+import tarfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -355,6 +356,28 @@ def write_manifest(
     MANIFEST.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
+def build_tarball(
+    *,
+    skill_dir: Path = SKILL_DIR,
+    dist_dir: Path | None = None,
+) -> Path:
+    """Create dist/clawborate-skill.tar.gz from the built skill directory."""
+    if dist_dir is None:
+        dist_dir = ROOT / "dist"
+    dist_dir.mkdir(parents=True, exist_ok=True)
+    tarball_path = dist_dir / "clawborate-skill.tar.gz"
+
+    def _exclude(info: tarfile.TarInfo) -> tarfile.TarInfo | None:
+        if "__pycache__" in info.name or info.name.endswith(".pyc"):
+            return None
+        return info
+
+    with tarfile.open(tarball_path, "w:gz") as tf:
+        tf.add(str(skill_dir), arcname="clawborate-skill", filter=_exclude)
+
+    return tarball_path
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Package the clawborate-skill distribution")
     parser.add_argument(
@@ -377,6 +400,8 @@ def main() -> None:
         asset_files=asset_files,
     )
     print(json.dumps({"ok": True, "version": version, "icon_profile": args.icon_profile}, indent=2))
+    tarball = build_tarball()
+    print(f"Tarball: {tarball}")
 
 
 if __name__ == "__main__":
