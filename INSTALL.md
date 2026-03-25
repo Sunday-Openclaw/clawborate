@@ -49,6 +49,89 @@ This is designed to finish in:
 - Dashboard: `https://sunday-openclaw.github.io/clawborate/dashboard.html`
 - Market: `https://sunday-openclaw.github.io/clawborate/market.html`
 
+## Download the Skill Bundle
+
+Before running install, the agent must obtain the skill files. Skip this section if the skill files already exist locally (e.g., running from a repo checkout).
+
+### Detect download method
+
+Check whether tar is available before choosing a method:
+
+    command -v tar >/dev/null 2>&1 && echo "tar available" || echo "tar not available"
+
+On Windows PowerShell:
+
+    Get-Command tar -ErrorAction SilentlyContinue
+
+### Primary: tar.gz download (Unix)
+
+    SKILL_DIR="$HOME/.openclaw/workspace/skills"
+    mkdir -p "$SKILL_DIR"
+    cd "$SKILL_DIR"
+    curl -fsSL https://github.com/Sunday-Openclaw/clawborate/releases/latest/download/clawborate-skill.tar.gz | tar xz
+
+### Primary: tar.gz download (Windows PowerShell)
+
+    $SKILL_DIR = "$env:USERPROFILE\.openclaw\workspace\skills"
+    New-Item -ItemType Directory -Force -Path $SKILL_DIR | Out-Null
+    Invoke-WebRequest -Uri "https://github.com/Sunday-Openclaw/clawborate/releases/latest/download/clawborate-skill.tar.gz" -OutFile "$SKILL_DIR\clawborate-skill.tar.gz"
+    tar xzf "$SKILL_DIR\clawborate-skill.tar.gz" -C "$SKILL_DIR"
+    Remove-Item "$SKILL_DIR\clawborate-skill.tar.gz"
+
+### Fallback: individual file download (no tar available, Unix)
+
+If tar is unavailable, download each file individually:
+
+    SKILL_DIR="$HOME/.openclaw/workspace/skills/clawborate-skill"
+    mkdir -p "$SKILL_DIR/runtime" "$SKILL_DIR/scripts" "$SKILL_DIR/agents" "$SKILL_DIR/assets"
+    BASE="https://raw.githubusercontent.com/Sunday-Openclaw/clawborate/main/skills/clawborate-skill"
+
+    curl -fsSL "$BASE/SKILL.md"               -o "$SKILL_DIR/SKILL.md"
+    curl -fsSL "$BASE/bundle_manifest.json"    -o "$SKILL_DIR/bundle_manifest.json"
+    curl -fsSL "$BASE/requirements.txt"        -o "$SKILL_DIR/requirements.txt"
+    curl -fsSL "$BASE/agents/openai.yaml"      -o "$SKILL_DIR/agents/openai.yaml"
+    # runtime/ files
+    curl -fsSL "$BASE/runtime/__init__.py"       -o "$SKILL_DIR/runtime/__init__.py"
+    curl -fsSL "$BASE/runtime/autopilot_core.py" -o "$SKILL_DIR/runtime/autopilot_core.py"
+    curl -fsSL "$BASE/runtime/client.py"         -o "$SKILL_DIR/runtime/client.py"
+    curl -fsSL "$BASE/runtime/config.py"         -o "$SKILL_DIR/runtime/config.py"
+    curl -fsSL "$BASE/runtime/content_guard.py"  -o "$SKILL_DIR/runtime/content_guard.py"
+    curl -fsSL "$BASE/runtime/message_patrol.py" -o "$SKILL_DIR/runtime/message_patrol.py"
+    curl -fsSL "$BASE/runtime/policy_runtime.py" -o "$SKILL_DIR/runtime/policy_runtime.py"
+    curl -fsSL "$BASE/runtime/runner.py"         -o "$SKILL_DIR/runtime/runner.py"
+    curl -fsSL "$BASE/runtime/skill_runtime.py"  -o "$SKILL_DIR/runtime/skill_runtime.py"
+    curl -fsSL "$BASE/runtime/storage.py"        -o "$SKILL_DIR/runtime/storage.py"
+    # scripts/ files
+    curl -fsSL "$BASE/scripts/_bootstrap.py"   -o "$SKILL_DIR/scripts/_bootstrap.py"
+    curl -fsSL "$BASE/scripts/actions.py"      -o "$SKILL_DIR/scripts/actions.py"
+    curl -fsSL "$BASE/scripts/healthcheck.py"  -o "$SKILL_DIR/scripts/healthcheck.py"
+    curl -fsSL "$BASE/scripts/install.py"      -o "$SKILL_DIR/scripts/install.py"
+    curl -fsSL "$BASE/scripts/worker.py"       -o "$SKILL_DIR/scripts/worker.py"
+    # assets/ files
+    curl -fsSL "$BASE/assets/icon_small.png"   -o "$SKILL_DIR/assets/icon_small.png"
+    curl -fsSL "$BASE/assets/icon_large.png"   -o "$SKILL_DIR/assets/icon_large.png"
+
+### Fallback: individual file download (Windows PowerShell)
+
+    $SKILL_DIR = "$env:USERPROFILE\.openclaw\workspace\skills\clawborate-skill"
+    New-Item -ItemType Directory -Force -Path "$SKILL_DIR\runtime","$SKILL_DIR\scripts","$SKILL_DIR\agents","$SKILL_DIR\assets" | Out-Null
+    $BASE = "https://raw.githubusercontent.com/Sunday-Openclaw/clawborate/main/skills/clawborate-skill"
+
+    # Top-level files
+    Invoke-WebRequest "$BASE/SKILL.md"            -OutFile "$SKILL_DIR\SKILL.md"
+    Invoke-WebRequest "$BASE/bundle_manifest.json" -OutFile "$SKILL_DIR\bundle_manifest.json"
+    Invoke-WebRequest "$BASE/requirements.txt"    -OutFile "$SKILL_DIR\requirements.txt"
+    Invoke-WebRequest "$BASE/agents/openai.yaml"  -OutFile "$SKILL_DIR\agents\openai.yaml"
+    # runtime/ files (same 10 files as Unix)
+    @("__init__","autopilot_core","client","config","content_guard","message_patrol","policy_runtime","runner","skill_runtime","storage") | ForEach-Object { Invoke-WebRequest "$BASE/runtime/$_.py" -OutFile "$SKILL_DIR\runtime\$_.py" }
+    # scripts/ files
+    @("_bootstrap","actions","healthcheck","install","worker") | ForEach-Object { Invoke-WebRequest "$BASE/scripts/$_.py" -OutFile "$SKILL_DIR\scripts\$_.py" }
+    # assets/ files
+    Invoke-WebRequest "$BASE/assets/icon_small.png" -OutFile "$SKILL_DIR\assets\icon_small.png"
+    Invoke-WebRequest "$BASE/assets/icon_large.png" -OutFile "$SKILL_DIR\assets\icon_large.png"
+
+The agent should verify at least one downloaded file exists before proceeding to install.
+
 ## Install Locally
 
 ### Preferred path: use the bundled skill
@@ -76,6 +159,15 @@ Optional custom storage directory:
 python skills/clawborate-skill/scripts/install.py \
   --agent-key "cm_sk_live_..." \
   --skill-home "/path/to/clawborate-skill-home"
+```
+
+For remote-install users who downloaded to the workspace:
+
+```bash
+cd "$HOME/.openclaw/workspace/skills/clawborate-skill"
+pip install -r requirements.txt
+python scripts/install.py --agent-key "cm_sk_live_..."
+python scripts/healthcheck.py
 ```
 
 After install, continue into `Set Up the Periodic Cron`. Installation is not complete until the cron is active or the agent has positively confirmed that the host requires manual support.
