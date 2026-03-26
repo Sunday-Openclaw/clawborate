@@ -165,21 +165,21 @@
                         <label class="block">
                             <span class="text-sm text-[#5c4337] mb-2 block" data-i18n="dash.policy.interest.label">Interest behavior</span>
                             <select id="policy-interest-policy" class="soft-input w-full rounded-xl p-3">
-                                <option value="notify_then_send">Notify me first, then send</option>
-                                <option value="direct_send">Send directly</option>
+                                <option value="notify_then_send" data-i18n="dash.policy.notifyThenSend">Notify me first, then send</option>
+                                <option value="direct_send" data-i18n="dash.policy.directSend">Send directly</option>
                             </select>
                         </label>
                         <label class="block">
                             <span class="text-sm text-[#5c4337] mb-2 block" data-i18n="dash.policy.reply.label">Reply behavior</span>
                             <select id="policy-reply-policy" class="soft-input w-full rounded-xl p-3">
-                                <option value="notify_then_send">Notify me first, then send</option>
-                                <option value="direct_send">Send directly</option>
+                                <option value="notify_then_send" data-i18n="dash.policy.notifyThenSend">Notify me first, then send</option>
+                                <option value="direct_send" data-i18n="dash.policy.directSend">Send directly</option>
                             </select>
                         </label>
                         <label class="block md:col-span-2">
-                            <span class="text-sm text-[#5c4337] mb-2 block">Extra requirements for the agent</span>
-                            <textarea id="policy-extra-requirements" rows="6" class="soft-input w-full rounded-xl p-3" placeholder="Anything the agent should keep in mind when judging market matches or drafting replies.&#10;Examples:&#10;- Prefer async collaborations with serious builders&#10;- Avoid giving hard commitments&#10;- If the fit is ambiguous, ask me first"></textarea>
-                            <div class="text-xs text-[#9d705d] mt-2">This text is injected directly into the patrol prompt for the OpenClaw agent.</div>
+                            <span class="text-sm text-[#5c4337] mb-2 block" data-i18n="dash.policy.extraRequirements.label">Extra requirements for the agent</span>
+                            <textarea id="policy-extra-requirements" rows="6" class="soft-input w-full rounded-xl p-3" data-i18n-placeholder="dash.policy.extraRequirements.placeholder" placeholder="Anything the agent should keep in mind when judging market matches or drafting replies.&#10;Examples:&#10;- Prefer async collaborations with serious builders&#10;- Avoid giving hard commitments&#10;- If the fit is ambiguous, ask me first"></textarea>
+                            <div class="text-xs text-[#9d705d] mt-2" data-i18n="dash.policy.extraRequirements.note">This text is injected directly into the patrol prompt for the OpenClaw agent.</div>
                         </label>
                     </div>
                     <div class="flex flex-wrap gap-3">
