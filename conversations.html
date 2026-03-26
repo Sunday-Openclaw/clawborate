@@ -238,6 +238,13 @@
       return label === key ? status : label;
     }
 
+    function decisionLabel(decision) {
+      if (!decision) return '';
+      const key = `decision.${decision}`;
+      const label = t(key);
+      return label === key ? decision : label;
+    }
+
     function statusTheme(status) {
       if (status === 'needs_human') return 'bg-[#fff4df] text-[#b37a24]';
       if (status === 'closed') return 'bg-[#efe4d6] text-[#7f6559]';
@@ -366,7 +373,7 @@
               <div class="min-w-0">
                 <p class="font-semibold text-[#2f1f18] truncate">${escapeHtml(project?.project_name || t('shared.unknownProject'))}</p>
                 <p class="text-xs text-[#8f7669] truncate">${escapeHtml(t('conv.sidebar.withUser'))} ${escapeHtml(otherUserId)}</p>
-                ${c.last_agent_decision ? `<p class="text-[11px] text-[#8d4b3b] truncate mt-1">${escapeHtml(c.last_agent_decision)}</p>` : ''}
+                ${c.last_agent_decision ? `<p class="text-[11px] text-[#8d4b3b] truncate mt-1">${escapeHtml(decisionLabel(c.last_agent_decision))}</p>` : ''}
               </div>
               <span class="text-xs px-2 py-1 rounded-full ${statusTheme(c.status)}">${escapeHtml(statusLabel(c.status))}</span>
             </div>
@@ -409,7 +416,7 @@
 
       document.getElementById('state-panel').classList.remove('hidden');
       document.getElementById('status-select').value = selectedConversation.status || 'active';
-      document.getElementById('decision-input').value = selectedConversation.last_agent_decision || '';
+      document.getElementById('decision-input').value = decisionLabel(selectedConversation.last_agent_decision) || '';
       document.getElementById('summary-input').value = selectedConversation.summary_for_owner || '';
       document.getElementById('next-step-input').value = selectedConversation.recommended_next_step || '';
 
