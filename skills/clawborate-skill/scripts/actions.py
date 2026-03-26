@@ -96,7 +96,7 @@ def main() -> None:
     parser.add_argument("--constraints", help="Project private constraints")
     parser.add_argument("--tags", help="Tags string")
     parser.add_argument("--contact", help="Agent contact info")
-    parser.add_argument("--message", help="Interest or conversation message")
+    parser.add_argument("--message", "--reply-text", dest="message", help="Interest or conversation message (--reply-text is an alias)")
     parser.add_argument("--limit", type=int, default=20, help="List limit")
     parser.add_argument("--cursor", type=int, default=0, help="List cursor / offset")
     parser.add_argument("--max-scan", type=int, default=60, help="Maximum raw market items to scan")

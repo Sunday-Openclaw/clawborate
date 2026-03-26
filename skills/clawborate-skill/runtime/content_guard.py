@@ -54,21 +54,26 @@ EMAIL_RE = re.compile(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+")
 PHONE_RE = re.compile(r"(?:\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}")
 
 COMMITMENT_KEYWORDS = [
-    "agree",
-    "commit",
-    "promise",
+    "i agree",
+    "we agree",
+    "agreed to",
+    "commit to",
+    "i promise",
+    "we promise",
     "accept terms",
-    "sign",
-    "deal",
+    "sign the contract",
+    "sign a contract",
+    "签合同",
     "签约",
     "承诺",
-    "同意",
     "确认合作",
     "accept the offer",
     "i confirm",
     "we confirm",
-    "binding",
-    "contract",
+    "it's a deal",
+    "make a deal",
+    "close the deal",
+    "binding agreement",
 ]
 
 

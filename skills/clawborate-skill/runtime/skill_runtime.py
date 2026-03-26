@@ -189,7 +189,8 @@ def _write_patrol_prompt(layout: StorageLayout) -> Path:
 - 不要依赖简单 tags overlap 或静态规则做最终结论
 - `extra_requirements` 具有高优先级
 - 不确定时返回 `ask_user`
-- 如果本轮没有任何用户可见事项，输出 `CLAWBORATE_IDLE`
+- 如果 patrol brief 包含 `has_pending_user_actions: true` 或 `notice` 字段，必须向用户报告待办事项，禁止输出 `CLAWBORATE_IDLE`
+- 仅当本轮没有任何用户可见事项且无待办事项时，才输出 `CLAWBORATE_IDLE`
 
 建议流程：
 1. 读取 patrol brief
@@ -241,6 +242,7 @@ def _build_bootstrap_plan(context: InstalledContext) -> dict[str, Any]:
         f'--session "isolated" '
         f'--session-key "{session_key}" '
         f'--every "{context.config.patrol_every_minutes}m" '
+        f'--max-duration "180s" '
         f'--message "Read {prompt_path.name} and execute one Clawborate patrol tick. '
         f'If nothing requires user-visible output, reply CLAWBORATE_IDLE."'
     )
@@ -266,6 +268,7 @@ def _build_bootstrap_plan(context: InstalledContext) -> dict[str, Any]:
                 f"Read {prompt_path.name} and execute one Clawborate patrol tick. "
                 "If nothing requires user-visible output, reply CLAWBORATE_IDLE."
             ),
+            "max_duration": "180s",
             "light_context": True,
             "best_effort_deliver": True,
             "delivery": delivery,
@@ -841,6 +844,22 @@ def send_message(
                 project_id=source_project_id,
             )
 
+    reply_behavior = policy_bundle.get("execution", {}).get("reply_behavior", "notify_then_send")
+    if reply_behavior != "direct_send":
+        return {
+            "ok": False,
+            "blocked": True,
+            "reason": "policy_requires_review",
+            "reply_behavior": reply_behavior,
+            "message": (
+                "Current policy does not allow direct sending. "
+                "Use apply_conversation_decision instead so the message "
+                "can be queued for user review."
+            ),
+            "source_project_id": source_project_id,
+            "source_project_resolution": source_resolution,
+        }
+
     compliance = _message_guard_result(message, policy_bundle)
     if not compliance["passed"]:
         return {
@@ -981,10 +1000,28 @@ def get_patrol_brief(
 
     projects = client.list_my_projects(limit=200) or []
     incoming = client.list_incoming_interests()
+
+    # --- Reconciliation: sync local pending_actions against server state ---
+    all_incoming_by_id = {str(item.get("id")): item for item in (incoming or []) if item.get("id")}
+    pending_actions = state.setdefault("pending_actions", {})
+    for token, action in list(pending_actions.items()):
+        if action.get("type") != "incoming_interest" or action.get("status") != "pending_user":
+            continue
+        interest_id = str(action.get("interest_id") or "")
+        server_interest = all_incoming_by_id.get(interest_id)
+        if server_interest is None:
+            # Interest deleted or no longer visible — mark resolved
+            action["status"] = "reconciled_gone"
+            action["resolved_at"] = anchor.isoformat()
+        elif server_interest.get("status") != "open":
+            # User already accepted/declined on Dashboard — sync status
+            action["status"] = f"reconciled_{server_interest.get('status', 'unknown')}"
+            action["resolved_at"] = anchor.isoformat()
+
     open_incoming = [item for item in incoming if item.get("status") == "open"]
     existing_tokens = {
         str(action.get("interest_id")): token
-        for token, action in (state.get("pending_actions") or {}).items()
+        for token, action in pending_actions.items()
         if action.get("type") == "incoming_interest" and action.get("status") == "pending_user"
     }
 
@@ -1064,21 +1101,30 @@ def get_patrol_brief(
         )
 
     _save_runtime_state(context, state)
+    pending_user_actions = [
+        action
+        for action in (state.get("pending_actions") or {}).values()
+        if action.get("status") == "pending_user"
+    ]
+    has_pending = len(pending_user_actions) > 0
     latest_report = {
         "mode": "patrol_brief",
         "generated_at": anchor.isoformat(),
         "tick_id": tick_id,
         "project_count": len(project_summaries),
-        "pending_actions": [
-            action
-            for action in (state.get("pending_actions") or {}).values()
-            if action.get("status") == "pending_user"
-        ],
+        "has_pending_user_actions": has_pending,
+        "pending_actions": pending_user_actions,
         "incoming_interests": incoming_summaries,
         "projects": project_summaries,
     }
     save_json(context.layout.latest_report_path, latest_report)
-    return {"ok": True, **latest_report}
+    result = {"ok": True, **latest_report}
+    if has_pending:
+        result["notice"] = (
+            "There are pending actions awaiting user review. "
+            "Do NOT reply CLAWBORATE_IDLE. Report these pending items to the user."
+        )
+    return result
 
 
 def list_market_page(

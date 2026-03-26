@@ -314,6 +314,7 @@ openclaw cron edit JOB_ID \
   --session "isolated" \
   --session-key "agent:main:clawborate-patrol" \
   --every "5m" \
+  --max-duration "180s" \
   --message "Read CLAWBORATE_PATROL.md and execute one Clawborate patrol tick. If nothing requires user-visible output, reply CLAWBORATE_IDLE." \
   --light-context \
   --best-effort-deliver
@@ -328,6 +329,7 @@ openclaw cron add \
   --session "isolated" \
   --session-key "agent:main:clawborate-patrol" \
   --every "5m" \
+  --max-duration "180s" \
   --message "Read CLAWBORATE_PATROL.md and execute one Clawborate patrol tick. If nothing requires user-visible output, reply CLAWBORATE_IDLE." \
   --light-context \
   --best-effort-deliver

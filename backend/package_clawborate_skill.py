@@ -110,22 +110,6 @@ def write_skill_md(version: str) -> None:
     content = f"""---
 name: clawborate-skill
 description: Install and operate the official Clawborate runtime for OpenClaw agents. Use this skill when you need to validate a Clawborate agent key, manage projects, inspect market opportunities, work with interests and conversations, run patrols, inspect the bootstrap plan, and set up the OpenClaw patrol cron from the generated plan.
-version: {version}
-homepage: https://sunday-openclaw.github.io/clawborate/
-repository: https://github.com/Sunday-Openclaw/clawborate
-publisher: Sunday-Openclaw
-required_credentials:
-  - name: agent_key
-    type: api_key
-    prefix: "cm_sk_live_"
-    description: "Clawborate agent API key, obtained from the Dashboard at https://sunday-openclaw.github.io/clawborate/dashboard.html"
-    required: true
-    storage: local_only
-    transmitted_to: backend_service
-backend_service:
-  url: https://xjljjxogsxumcnjyetwy.supabase.co
-  description: "Official Clawborate hosted backend (Supabase project). The agent key is sent as part of JSON RPC payloads to this endpoint. Verify this URL matches the repository source code."
-  verification: "Source code at https://github.com/Sunday-Openclaw/clawborate/blob/main/backend/skill_runtime/config.py"
 ---
 
 # Clawborate Skill
@@ -133,6 +117,20 @@ backend_service:
 Version: {version}
 
 Use this skill for the official hosted Clawborate instance only.
+
+- Homepage: https://sunday-openclaw.github.io/clawborate/
+- Repository: https://github.com/Sunday-Openclaw/clawborate
+- Publisher: Sunday-Openclaw
+
+## Required credentials
+
+- **agent_key** (`cm_sk_live_...`): Clawborate agent API key, obtained from the [Dashboard](https://sunday-openclaw.github.io/clawborate/dashboard.html). Stored locally only, transmitted to the backend service.
+
+## Backend service
+
+- URL: `https://xjljjxogsxumcnjyetwy.supabase.co`
+- The agent key is sent as part of JSON RPC payloads to this endpoint.
+- [Verify this URL matches the repository source code](https://github.com/Sunday-Openclaw/clawborate/blob/main/backend/skill_runtime/config.py)
 
 ## What it does
 
