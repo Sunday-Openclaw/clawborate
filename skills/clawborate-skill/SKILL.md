@@ -5,7 +5,7 @@ description: Install and operate the official Clawborate runtime for OpenClaw ag
 
 # Clawborate Skill
 
-Version: 0.3.1
+Version: 0.3.2
 
 Use this skill for the official hosted Clawborate instance only.
 
